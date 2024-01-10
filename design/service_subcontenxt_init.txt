@@ -1,0 +1,39 @@
+Russ, 10 Jan:
+
+In my previous exploration with subcontexts, I imagined that every service
+subcontext would start its existence as a process; we'd use the ordinary
+loader to create all of the memory with all of the proper mappings, and
+then walk /proc/self/maps to get the list; we would then open a tmpfile and
+dump all of the memory into the file, re-mapping as I go.  I think that a
+hackish, barely working version of this exists in the archived code.
+
+The problem was that the standard "core" file for C programs (crt0.s, IIRC)
+used hard-coded addresses, meaning that every single program that runs shares
+those basic addresses.  Thus, the strategy was broken (at the time).  But I
+was able to solve this by building an ET_DYN executable: basically, you can
+create an executable that doesn't have any fixed addresses.  That is, (like a
+shared library) your program is *completely* flexible about where it can be
+placed.  This solved the problem, and one can find info about how to do that
+in the archive as well.
+
+However, two new things have arisen, which mean that we probably want to try
+another path.  First, I just checked a running Linux box, and I wasn't able
+to find *any* common addresses between two running processes (sshd and bash).
+We need to investigate further (especially since bash might have been compiled
+oddly) - but it is possible that the ET_DYN trick is no longer necessary (or
+perhaps, in the advent of ASLR (Address Space Layout Randomization), maybe it
+is now the standard way to build apps?).
+
+Second, as we were talking about this process, it occurred to me that it might
+make sense to abandon the launcher-process strategy entirely.  What if we
+simply build a service subcontext as shared library?  To load it, we could
+call dlopen() from a (perhaps standard!) launcher application; we could then
+walk /proc/self/maps (comparing it to an *older* version) to see what pages
+got added, and then copy those.  The advantage of this system is that we don't
+have to worry about self-modifying code and data, since the code and data of
+the shared library would be idle while we were doing the copy.
+
+TODO: would we have to worry about any process-related resources, like open
+      files?  Maybe we should just forbid any use of such things in a
+      service subcontext.
+

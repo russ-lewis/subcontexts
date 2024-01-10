@@ -1,0 +1,6 @@
+TODO: look up (in the Bodyguard source) how to use a "shim" to intercept C
+library functions.  It should be pretty easy to intercept mmap(), when we
+finally want to implement that - although intercepting the mmap *system call*
+will be much harder (we would have to leverage the UML strategies to make that
+work).
+

@@ -1,0 +1,6 @@
+What do we do when a subcontenxt has opened some files?  How do we handle file
+I/O?  The simple (but ugly) solution would be to have an I/O daemon for each
+service subcontext...
+
+TBD
+
