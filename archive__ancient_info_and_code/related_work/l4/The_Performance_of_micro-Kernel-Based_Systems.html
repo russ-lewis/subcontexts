@@ -1,0 +1,1797 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Draft//EN">
+<html><head><!--Converted with LaTeX2HTML 96.1-h (September 30, 1996) by Nikos Drakos (nikos@cbl.leeds.ac.uk), CBLU, University of Leeds --><title>The Performance of µ-Kernel-Based Systems</title>
+
+<meta name="description" content="1st-generation microkernels have a reputation of being too slow and too inflexible.  This paper shows that 2nd-generation microkernels such as L4 have overcome these limitations.">
+<meta name="keywords" content="microkernel µ-kernel performance l4linux linux l4 operating system">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<link rel="STYLESHEET" href="The_Performance_of_micro-Kernel-Based_Systems_files/main">
+<link rel="copyright" href="http://os.inf.tu-dresden.de/pubs/sosp97/copyright.html"></head>
+
+
+<body lang="EN">
+<p>
+</p><h1 align="center">The Performance of µ-Kernel-Based Systems</h1>
+<p align="center"><strong>
+  Hermann&nbsp;Härtig - 
+  Michael&nbsp;Hohmuth - 
+  Jochen&nbsp;Liedtke* - 
+  Sebastian&nbsp;Schönberg - 
+  Jean&nbsp;Wolter</strong>
+
+</p><div align="center"><p align="center">
+</p><table align="center">
+<colgroup><col><col width="50"><col></colgroup>
+<tbody><tr valign="top">
+<td>
+<small class="small">Dresden University of Technology<br>
+Department of Computer Science<br>
+D-01062 Dresden, Germany<br>
+email: <a href="mailto:l4-linux@os.inf.tu-dresden.de">&lt;l4-linux@os.inf.tu-dresden.de&gt;</a></small></td>
+<td align="right"><small class="small">*</small></td>
+<td>
+<small class="small">IBM Watson Research Center<br>
+30 Saw Mill River Road<br>
+Hawthorne, NY 10532, USA<br>
+email: <a href="mailto:jochen@watson.ibm.com">&lt;jochen@watson.ibm.com&gt;</a></small></td>
+</tr></tbody></table></div>
+
+<p><small class="small">
+This research was supported in part by the Deutsche 
+Forschungsgemeinschaft (DFG) through the Sonderforschungsbereich 358. 
+</small>
+
+</p><p><small class="small"><a href="http://os.inf.tu-dresden.de/pubs/sosp97/copyright.html">Copyright © 1997 by the
+Association for Computing Machinery, Inc.</a></small>
+</p><p>
+
+<small class="small"><a href="http://sosp16.irisa.fr/">16th ACM Symposium on
+Operating Systems Principles (SOSP'97)</a>, October 5-8, 1997, Saint-Malo, France</small>
+
+</p><p><small class="small">A <a href="http://os.inf.tu-dresden.de/papers_ps/sosp97.ps">PostScript version</a> of this
+paper is also available.</small>
+
+</p><p>
+[ Jump to: <a href="#SECTION00010000000000000000">Introduction</a> |
+<a href="#SECTION00020000000000000000">Related Work</a> |
+<a href="#SECTION00030000000000000000">L4 Essentials</a> |
+<a href="#SECTION00040000000000000000">Linux on Top of L4</a> |
+<a href="#SECTION00050000000000000000">Compatibility Performance</a> |
+<a href="#SECTION00060000000000000000">Extensibility Performance</a> |
+<a href="#SECTION00070000000000000000">Alternative Basic Concepts</a> |
+<a href="#SECTION00080000000000000000">Conclusions</a> |
+<a href="#SECTION00081000000000000000">Availability </a> |
+<a href="#SECTION00082000000000000000">Acknowledgments</a> |
+<a href="#SECTIONREF">References</a> ]
+</p><p>
+</p><h3><a name="SECTION00001000000000000000">Abstract</a></h3>
+
+First-generation µ-kernels have a reputation for being too slow and
+lacking sufficient flexibility.  To determine whether L4, a lean second-generation
+µ-kernel, has overcome these limitations, we have repeated several earlier experiments and
+conducted some novel ones. Moreover, we ported the Linux operating system
+to run on top of the L4 µ-kernel and compared the resulting system with both 
+Linux running native, and MkLinux, a Linux
+version that executes on top of a first-generation Mach-derived µ-kernel.
+<p>
+For L<sup>4</sup>Linux, the AIM benchmarks report a maximum throughput which is only 5% lower than that of
+native Linux. The corresponding penalty is 5 times higher for a co-located
+in-kernel version of MkLinux, and 7 times higher for a user-level version of MkLinux.
+These numbers demonstrate both that it is possible to implement a high-performance
+conventional operating system personality above a µ-kernel, and that the performance
+of the µ-kernel is crucial to achieve this.
+</p><p>
+Further experiments illustrate that the resulting system is highly extensible
+and that the extensions perform well.        Even real-time memory management including second-level cache allocation
+can be implemented at user-level, coexisting with L<sup>4</sup>Linux.
+</p><p>
+</p><h2><a name="SECTION00010000000000000000">1 &nbsp;&nbsp;&nbsp;Introduction</a></h2>
+<p>
+The operating systems research community has almost completely
+abandoned research on system architectures that are based on <em>
+pure</em> µ-kernels, i.e. kernels that provide only address spaces,
+threads and IPC, or an equivalent set of primitives. 
+This trend is due primarily to the poor performance exhibited by such
+systems constructed in the 1980's and early 1990's.
+This reputation has not changed even with the advent of faster
+µ-kernels; perhaps because these µ-kernel have for the most part only been evaluated using microbenchmarks.
+</p><p>
+Many people in the OS research community have adopted the hypothesis that the layer of abstraction
+provided by pure µ-kernels is either too low or too high.  The ``too
+low'' faction concentrated on the extensible-kernel idea.
+Mechanisms were introduced to add functionality to kernels and their
+address spaces, either pragmatically (co-location in Chorus or Mach) or
+systematically.  Various means were invented to protect kernels from
+misbehaving extensions, ranging from the use of safe languages
+[<a href="#ber:spin2">5</a>] to expensive transaction-like schemes [<a href="#seltzer:vino">34</a>].  The
+``too high'' faction started building kernels resembling a hardware
+architecture at their interface [<a href="#engler:exo2">12</a>]. Software abstractions
+have to be built on top of that.  It is claimed that
+µ-kernels can be fast on a given architecture but cannot be moved to
+other architectures without losing much of their
+efficiency [<a href="#Karshmer:1991:OSA">19</a>].
+</p><p>
+In contrast, we investigate
+the pure µ-kernel approach by systematically repeating earlier experiments
+and conducting some novel experiments using L4, a second-generation 
+µ-kernel. (Most first-generation µ-kernels like Chorus&nbsp;[<a href="#rozier:chorus">32</a>] 
+and Mach&nbsp;[<a href="#Rashid:90">13</a>] evolved from earlier monolithic kernel approaches; second-generation
+µ-kernels like QNX&nbsp;[<a href="#hildebrand:QNX">16</a>] and L4 
+more rigorously aim at minimality and are designed from scratch&nbsp;[<a href="#towards">24</a>].)
+</p><p>
+The goal of this work is to show that µ-kernel based systems are usable
+in practice with good performance.
+L4 is a lean kernel featuring fast message-based synchronous IPC, a simple-to-use
+external paging mechanism and a security mechanism based on secure
+domains.    The kernel implements only a
+minimal set of abstractions upon which operating systems can be built
+[<a href="#sosp2">22</a>].
+The following experiments were performed:
+</p><p>
+</p><ul>
+<li> A monolithic Unix kernel, Linux, was adapted to run as a
+  user-level single server on top of L4. This makes L4
+  usable in practice, and gives us some evidence (at least an
+  upper bound) on the penalty of using a standard OS personality
+  on top of a fast µ-kernel.
+  The performance of the
+  resulting system is compared to the native Linux implementation and
+  MkLinux, a port of Linux to a Mach 3.0 derived µ-kernel
+  [<a href="#mklinux">10</a>].
+<p>
+  Furthermore, comparing L<sup>4</sup>Linux and MkLinux gives us some insight in how the
+  µ-kernel efficiency influences the overall system performance.
+     </p><p>
+</p></li><li> The objective of three further experiments was to show the extensibility
+  of the system and to evaluate the achievable performance.
+  Firstly, pipe-based local communication
+  was implemented directly on the µ-kernel and compared to the
+  native Linux implementation.      Secondly, some mapping-related OS extensions (also presented in the recent
+  literature on extensible kernels) have been implemented as user-level
+  tasks on L4. 
+  Thirdly, the first part of a user-level real-time memory management system
+  was implemented. Coexisting with L<sup>4</sup>Linux, the system controls 
+  second-level cache allocation to improve the worst-case performance 
+  of real-time applications.
+     <p>
+</p></li><li> To check whether the L4 abstractions are reasonably independent of the 
+  Pentium platform L4 was originally designed for, the µ-kernel was reimplemented 
+  from scratch on an Alpha 21164, 
+  preserving the original L4 interface.     
+  Starting from the IPC implementation in L4/Alpha, we also implemented a
+  lower-level communication primitive, similar
+  to Exokernel's protected control transfer&nbsp;[<a href="#engler:exo2">12</a>], to find
+  out whether and to what extent the L4 IPC abstraction can be outperformed
+  by a lower-level primitive.
+<p>
+</p></li></ul>
+<p>
+After a short overview of L4 in Section&nbsp;<a href="#secL4">3</a>,
+Section&nbsp;<a href="#seclinux">4</a> explains the design
+and implementation of our Linux server. Section <a href="#linuxperf">5</a>
+then presents and analyzes the system's performance for pure Linux applications,
+based on microbenchmarks as well as macrobenchmarks. Section&nbsp;<a href="#extperf">6</a>
+shows the extensibility advantages of implementing Linux above a µ-kernel.
+In particular, we show (1) how performance can be improved by implementing
+some Unix services and variants of them directly above the L4 µ-kernel,
+(2) how additional services can be provided efficiently to the application, and (3)
+how whole new classes of applications (e.g. real time) can be supported concurrently
+with general-purpose Unix applications.
+Finally, Section&nbsp;<a href="#secalternatives">7</a>
+discusses alternative basic concepts from
+a performance point of view.
+</p><p>
+</p><h2><a name="SECTION00020000000000000000">2 &nbsp;&nbsp;&nbsp;Related Work</a></h2>
+<p>
+Most of this paper repeats
+experiments described by Bershad <i>et al.</i>&nbsp;[<a href="#ber:spin2">5</a>],
+des Places, Stephen &amp; Reynolds&nbsp;[<a href="#mklinux">10</a>], and Engler, Kaashoek &amp;
+O'Toole&nbsp;[<a href="#engler:exo2">12</a>] to explore the
+influence of a second-generation µ-kernel on user-level
+application performance. Kaashoek <i>et al.</i> describe in&nbsp;[<a href="#kaashoek:appl-perf">18</a>]
+how to build a Unix-compatible operating system on top of a small kernel.
+We concentrate on the problem of porting an existing monolithic operating
+system to a µ-kernel.
+</p><p>
+A large bunch of evaluation work exists which addresses how certain
+application
+or system functionality, e.g. a protocol implementation, can be
+accelerated using system specialization&nbsp;[<a href="#pu:specialization">31</a>],
+extensible
+kernels&nbsp;[<a href="#ber:spin2">5</a>, <a href="#engler:exo2">12</a>, <a href="#seltzer:vino">34</a>], layered path
+organisation&nbsp;[<a href="#scout">30</a>], etc.
+Two alternatives to the pure µ-kernel approach,
+grafting and the Exokernel idea, are discussed in more detail in
+Section&nbsp;<a href="#secalternatives">7</a>.
+</p><p>
+Most of the performance evaluation results published elsewhere deal with
+parts of the Unix functionality.
+An analysis of two complete Unix-like OS implementations regarding
+memory-architecture-based influences, is described in [<a href="#chen:memory">8</a>].
+Currently, we do not know of any other full Unix implementation on a
+second-generation µ-kernel. And we know of no other recent end-to-end
+performance evaluation of µ-kernel-based OS personalities.
+We found no substantiation for the ``common knowledge'' that early
+Mach3.0-based
+Unix single-server implementations achieved a performance penalty of only
+10%
+compared to bare Unix on the same hardware. For newer hardware,
+[<a href="#condict:mkp">9</a>]
+reports penalties of about 50%.
+</p><p>
+                      <a name="secL4"></a>
+</p><h2><a name="SECTION00030000000000000000">3 &nbsp;&nbsp;&nbsp;L4 Essentials</a></h2>
+<p>
+The L4 µ-kernel&nbsp;[<a href="#sosp2">22</a>] is based on two basic concepts,
+threads and address spaces.
+A <em>thread</em> is an activity executing inside an address space. 
+Cross-address-space communication, also called inter-process
+communication (IPC), is one of the most fundamental µ-kernel mechanisms.
+Other forms of communication, such as remote procedure call (RPC) and controlled
+thread migration between address spaces, can be constructed from
+the IPC primitive.
+</p><p>
+A basic idea of L4 is to support recursive construction of <em>address spaces</em>
+by user-level servers outside
+the kernel. The initial address space <img alt="Sigma0" src="The_Performance_of_micro-Kernel-Based_Systems_files/img5" align="middle" height="15" width="13"> 
+essentially represents the physical memory.
+Further address spaces can be constructed by
+<em>granting</em>, <em>mapping</em> and <em>unmapping</em> flexpages, logical pages of size 2<sup>n</sup>,
+ranging from one physical page up to a complete address space.
+The owner of an address space can grant 
+or map any of its pages to another address space, provided the recipient agrees.
+Afterwards, the page can be accessed in both address spaces. 
+The owner can also unmap any of its pages from all other address spaces that
+received the page directly or indirectly from the unmapper.
+The three basic operations are secure since they work on virtual pages, not on
+physical page frames. So the invoker can only map and unmap pages that have
+already been mapped into its own address space.
+</p><p>
+All address spaces are thus constructed and maintained by user-level servers, also
+called <em>pagers</em>; only the grant, map and unmap operations are
+implemented inside the kernel.  Whenever a page fault occurs, the 
+µ-kernel propagates it via IPC to the pager currently
+associated with the faulting thread.                  The threads can dynamically associate individual pagers with themselves.
+This operation specifies to which user-level pager the µ-kernel 
+should send the page-fault IPC. The semantics of a page fault is completely 
+defined by the interaction of user thread and pager.
+Since the bottom-level pagers in the resulting address-space hierarchy are in fact
+main-memory managers, this scheme enables a variety of memory-management
+policies to be implemented on top of the µ-kernel.
+</p><p>
+I/O ports are treated as parts of address spaces so that they can be 
+mapped and unmapped in the same manner as memory pages.
+Hardware interrupts are handled as IPC. The µ-kernel 
+transforms an incoming interrupt into a message to the associated thread.
+This is the basis for implementing all device drivers as user-level servers
+outside the kernel.
+</p><p>
+In contrast to interrupts, exceptions and traps are synchronous to the raising
+thread. The kernel simply mirrors them to the user level. On the Pentium processor,
+L4 multiplexes the processor's exception handling mechanism per thread: an exception
+pushes instruction pointer and flags on the thread's user-level stack and invokes the thread's 
+(user-level) exception or trap handler.
+</p><p>
+A Pentium-specific feature of L4 is the <em>small</em>-address-space optimization.
+Whenever the currently-used portion of an address space is ``small'', 4MB up to 512MB,
+this logical space can be physically shared through all page tables
+and protected by Pentium's segment mechanism.
+As described in [<a href="#sosp2">22</a>], this simulates a tagged TLB for context
+switching to and from small address spaces. Since the virtual address space is limited,
+the total size of all small spaces is also limited to 512MB by default.
+The described mechanism is solely used for optimization and
+does not change the functionality of the system. As soon as a thread accesses data outside
+its current small space, the kernel automatically switches it back to the normal
+3GB space model. Within a single task, some threads might use the normal large space
+while others operate on the corresponding small space.
+</p><p>
+ <a name="secalpha"></a>
+</p><h3><a name="SECTION00030100000000000000">Pentium - Alpha - MIPS</a></h3>
+<p>
+Originally developed for the 486 and Pentium architecture,
+experimental L4 implementations now exist for Digital's Alpha 21164&nbsp;[<a href="#l4alpha">33</a>]
+and MIPS R4600&nbsp;[<a href="#heiser:impl-mungi">14</a>].
+Both new implementations were designed from scratch. L4/Pentium, L4/Alpha and L4/MIPS
+are different µ-kernels with the same logical API. However, the µ-kernel-internal
+algorithms and the binary API (use of registers,
+word and address size, encoding of the kernel call) are processor dependent and optimized
+for each processor. Compiler and libraries hide the binary API differences from the user.
+The most relevant user-visible
+difference probably is that the Pentium µ-kernel runs in 32-bit mode whereas
+the other two are 64-bit-mode kernels and therefore support larger address spaces.
+</p><p>
+The L4/Alpha implementation is based on a complete replacement
+of Digital's original PALcode [<a href="#alpha21164">11</a>]. Short, time-critical operations are hand-tuned
+and completely performed in PALcode. Longer, interruptible
+operations enter PALcode, switch to kernel mode and leave PALcode
+to perform the remainder of the operation using standard machine instructions.
+A comparison of IPC performance of the three L4 µ-kernels can be found
+in&nbsp;[<a href="#ipcperf">25</a>].
+</p><p>
+ <a name="seclinux"></a>
+</p><h2><a name="SECTION00040000000000000000">4 &nbsp;&nbsp;&nbsp;Linux on Top of L4</a></h2>
+<p>
+Many classical systems emulate Unix on top of a µ-kernel.
+For example, monolithic Unix kernels were ported to Mach [<a href="#Rashid:90">13</a>, <a href="#%20helander94:lites"></a>] and Chorus&nbsp;[<a href="#batlivala:unix">4</a>].
+Very recently, a single-server experiment was repeated with Linux and newer, optimized versions of
+Mach&nbsp;[<a href="#mklinux">10</a>].
+</p><p>
+To add a standard OS personality to L4, we decided to port Linux. Linux is stable,
+performs well, and is on the way to becoming a <em>de-facto</em> standard in the freeware
+world. Our goal was a 100%-Linux-compatible system that could offer
+all the features and flexibility of the underlying µ-kernel.
+</p><p>
+To keep the porting effort low, we decided to forego any structural changes to
+the Linux kernel. In particular, we felt that it was beyond our means to tune
+Linux to our µ-kernel in the way the Mach team tuned their single-server Unix
+to the features of Mach. As a result, the performance measurements shown can be
+considered a baseline comparison level for the performance that can be achieved with more
+significant optimizations. A positive implication of this design decision is that
+new versions of Linux can be easily adapted to our system.
+</p><p>
+ <a name="linux"></a>
+</p><h3><a name="SECTION00041000000000000000">4.1 &nbsp;&nbsp;&nbsp;Linux Essentials</a></h3>
+<p>
+Although originally developed for x86 processors,
+the Linux kernel has been ported to several other
+architectures, including Alpha, M68k and SPARC [<a href="#linux">27</a>].
+Recent versions contain a relatively
+well-defined interface between architecture-dependent and independent
+parts of the kernel [<a href="#hohmuth96:linuxif">17</a>]. All interfaces described 
+in this paper correspond to Linux version 2.0.
+</p><p>
+Linux' <em>architecture-independent</em> part includes process and resource management, 
+file systems, networking subsystems and all device drivers.
+Altogether, these are about 98% of the Linux/x86 source distribution of kernel and device drivers.
+Although the device drivers belong to the architecture-independent part,
+many of them are of course hardware dependent. Nevertheless, provided the
+hardware is similar enough, they can be used in different Linux adaptions.
+</p><p>
+Except perhaps exchanging the device drivers,
+porting Linux to a new platform should only entail changes to the <em>architecture-dependent</em> 
+part of the system. 
+This part completely encapsulates the underlying hardware architecture.
+It provides support for interrupt-service routines, low-level device driver support 
+(e.g., for DMA), and methods for interaction with user processes.
+It also implements switching between Linux kernel contexts, 
+copyin/copyout for transferring data between kernel and user address spaces,
+signaling, mapping/unmapping mechanisms for constructing address spaces,
+and the Linux system-call mechanism.
+From the user's perspective, it defines the
+kernel's application binary interface.
+</p><p>
+For managing address spaces,
+Linux uses a three-level architecture-independent page table scheme.
+By defining macros, the architecture-dependent part maps it
+to the underlying low-level mechanisms such as
+hardware page tables or software TLB handlers.
+</p><p>
+Interrupt handlers in Linux are subdivided into <em>top halves</em>
+and <em>bottom halves</em>. Top halves run at the highest priority, are directly
+triggered by hardware interrupts and can interrupt each other. Bottom halves
+run at the next lower priority. A bottom-half handler can be interrupted
+by top halves but not by other bottom halves or the Linux kernel.
+</p><p>
+ <a name="l4linux"></a>
+</p><h3><a name="SECTION00042000000000000000">4.2 &nbsp;&nbsp;&nbsp;L<sup>4</sup>Linux - Design and Implementation</a></h3>
+<p>
+We chose to be fully binary compliant with Linux/x86. 
+Our test for compatibility was that any off-the-shelf software for Linux should
+run on L<sup>4</sup>Linux.
+Therefore, we used all application-binary-interface definition 
+header files unmodified from the native Linux/x86 version.
+</p><p>
+In keeping with our decision to minimize L4-specific changes to Linux, 
+we restricted all our modifications to the architecture-dependent part.
+Also, we restricted ourselves
+from making any Linux-specific modifications to the L4 µ-kernel.
+Porting Linux was therefore also an experiment checking whether 
+performance can be achieved without significant µ-kernel-directed
+optimizations in the Linux kernel, and whether
+the L4 interface is truly general and flexible.
+</p><p>
+Under the constraints mentioned above, the natural solution
+is the straightforward single-server approach, similar to [<a href="#Rashid:90">13</a>]:
+µ-kernel tasks are used for Linux user processes and provide Linux services 
+via a single Linux server in a separate µ-kernel task.
+This is indeed how we began our port.
+</p><p>
+</p><h4><a name="SECTION00042010000000000000">The Linux Server (``Linux Kernel'').</a></h4>
+<p>
+Native Linux maps physical memory one-to-one to the
+the kernel's address space. We used the same scheme for the L<sup>4</sup>Linux
+server.
+Upon booting, the Linux server requests memory from its underlying pager. Usually, this is
+<img alt="Sigma0" src="The_Performance_of_micro-Kernel-Based_Systems_files/img7" align="middle" height="15" width="14">, which maps the physical memory that is available for the Linux personality
+one-to-one into the Linux server's address space (see Figure&nbsp;<a href="#addr">1</a>).
+The server then acts as a pager for the user processes it creates.
+</p><p>
+<a name="addr"></a>
+</p><p align="center"><a name="545"></a><img src="The_Performance_of_micro-Kernel-Based_Systems_files/img8" align="bottom" height="272" width="574"><br>
+<strong>Figure 1:</strong> <em>L<sup>4</sup>Linux Address Spaces.</em> <small class="FOOTNOTE">
+                                   Arrows denote mapping. The Linux server space
+                                   can be a subset of <img alt="Sigma0" src="The_Performance_of_micro-Kernel-Based_Systems_files/img7" align="middle" height="15" width="14">.
+                                   Although plotted as smaller boxes, the user address spaces
+                                   can be larger than the server's address space.
+                                   </small><br>
+</p><p>
+</p><p>
+For security reasons, the true hardware page tables are kept inside L4 and cannot
+be directly accessed by user-level processes. As a consequence, the Linux server has to keep
+and maintain additional logical page tables in its own address space. 
+For the sake of simplicity, we use the original Pentium-adapted page tables in the server unmodified as
+logical page tables.
+Compared to native Linux, this doubles the memory consumption by page tables. 
+Although current memory pricing lets us ignore the additional memory costs, double bookkeeping
+could decrease speed. However, the benchmarks in Section&nbsp;<a href="#linuxperf">5</a>
+suggest that this is not a problem.
+</p><p>
+Only a single L4 thread is used in the L<sup>4</sup>Linux server for handling
+all activities induced by system calls and page faults.
+Linux multiplexes this thread to avoid blocking in the kernel.
+Multithreading at the L4 level might have been more elegant and faster.
+However, it would have implied a substantial change to
+the original Linux kernel and was thus rejected.
+</p><p>
+The native uniprocessor Linux kernel uses interrupt disabling for
+synchronization and critical sections. Since L4 also permits 
+privileged user-level tasks, e.g. drivers, to disable interrupts, we could use the
+existing implementation without modification.
+</p><p>
+</p><h4><a name="SECTION00042020000000000000">Interrupt Handling and Device Drivers.</a></h4>
+<p>
+The L4 µ-kernel maps hardware interrupts to messages (Figure&nbsp;<a href="#figinterrupt">2</a>).  The Linux
+top-half interrupt handlers are implemented as threads waiting for
+such messages, one thread per interrupt source:
+</p><p>
+</p><pre><tt>interrupt handler thread:
+
+   <b>do</b>
+      wait for interrupt { L4-IPC } ;
+      top half interrupt handler ()
+   <b>od</b> .</tt></pre><br>
+<p>
+Another thread executes all bottom halves once the pending top
+halves have been completed. Executing the interrupt threads and the bottom-half thread
+on a priority level above that of the Linux server thread avoids concurrent execution
+of interrupt handlers and the Linux server, exactly as on native uniprocessor Linux.
+</p><p>
+</p><p align="center"><a name="547"></a><a name="figinterrupt"></a><img src="The_Performance_of_micro-Kernel-Based_Systems_files/img9" align="bottom" height="130" width="381"><br>
+<strong>Figure 2:</strong> <em>Interrupt handling in L<sup>4</sup>Linux.</em><br>
+</p><p>
+</p><p>
+Since the L4 platform is nearly identical to a bare Pentium architecture
+platform, we reused most of the device driver support from Linux/x86. 
+As a result, we are able to employ all Linux/x86 device drivers without modification.
+</p><p>
+</p><h4><a name="SECTION00042030000000000000">Linux User Processes.</a></h4>
+<p>
+Each <em>Linux user process</em> is implemented as an L4 task, i.e. an address
+space together with a set of threads executing in this space. The Linux server
+creates these tasks and specifies itself as their associated pager. L4 then 
+converts any Linux user-process page fault into an RPC to the Linux server.
+The server usually replies by mapping and/or unmapping one or more pages of
+its address space to/from the Linux user process. Thereby, it
+completely controls the Linux user spaces.
+</p><p>
+In particular, the Linux server maps the emulation library and the signal thread
+code (both described in the following paragraphs) into an otherwise unused high-address part of
+each user address space.
+</p><p>
+In accordance with our decision to keep Linux changes minimal, the ``emulation'' library
+handles only communication with the Linux server and does not emulate Unix functionality
+on its own. For example, a <tt>getpid</tt> or <tt>read</tt> system call is always issued
+to the server and never handled locally.
+</p><p>
+ <a name="secsyscall"></a>
+</p><h4><a name="SECTION00042040000000000000">System-Call Mechanisms.</a></h4>
+<p>
+L<sup>4</sup>Linux system calls are implemented using remote procedure calls, i.e. IPCs between 
+the user processes and the Linux server. There are three concurrently
+usable system-call interfaces:
+</p><ol>
+<li> a modified version of the standard shared C library
+  <tt>libc.so</tt> which uses L4 IPC primitives to call the Linux
+  server;
+</li><li> a correspondingly modified version of the <tt>libc.a</tt> library;
+</li><li> a user-level exception handler (``trampoline'') which emulates the native
+  system-call trap instruction by calling a corresponding routine in
+  the modified shared library.
+</li></ol>      
+The first two mechanisms are slightly faster, and the third one establishes true
+binary compatibility. Applications that are linked against the
+shared library automatically obtain the performance advantages of the first mechanism.
+Applications statically linked against an unmodified <tt>libc</tt> suffer the
+performance degradation of the latter mechanism. 
+All mechanisms can be arbitrarily mixed in any
+Linux process. 
+Most of the available Linux software is dynamically linked against the shared library;
+many remaining programs can be statically relinked against our modified <tt>libc.a</tt>.
+We consider therefore the trampoline mechanism to be necessary for binary compatibility
+but of secondary importance from a performance point of view.
+<p>
+As required by the architecture-independent part of Linux, the server
+maps all available physical memory one-to-one into its own address space.  Except for a small
+area used for kernel-internal virtual memory, the server's virtual
+address space is otherwise empty.  
+Therefore, all Linux
+server threads execute in a small address spaces which enables
+improved address-space switching by simulating a tagged TLB on
+the Pentium processor. This affects all IPCs with the Linux server:
+Linux system calls, page faults and hardware interrupts. Avoiding TLB flushes
+improves IPC performance by at least a factor of 2; factors up to 6 are possible for
+user processes with large TLB working sets.
+</p><p>
+The native Linux/x86 kernel always maps the current user address space
+into the kernel space. Copyin and copyout are done by 
+simple memory copy operations
+where the required address translation is done by hardware.
+Surprisingly, this solution turned out to have bad performance implications
+under L4 (see Section&nbsp;<a href="#toonaive">4.3</a>).
+</p><p>
+Instead, the L<sup>4</sup>Linux server uses physical copyin and copyout
+to exchange data between kernel and user processes.
+For each copy operation, it parses the server-internal logical page tables
+to translate virtual user addresses into
+the corresponding ``physical'' addresses in the server's address space,
+and then performs the copy operation using the physical addresses.
+</p><p>
+</p><h4><a name="SECTION00042050000000000000">Signaling.</a></h4>
+<p>
+The native Linux kernel delivers signals to user processes by
+directly manipulating their stack, stack pointer and instruction pointer.
+For security reasons, L4 restricts such inter-thread manipulations
+to threads sharing the same address space. Therefore,
+an additional signal-handler thread was added to each Linux user
+process (see Figure&nbsp;<a href="#figsignal">3</a>).  
+Upon receiving a message from the Linux server, the signal
+thread causes the main thread (which runs in the same address space) 
+to save its state and enter Linux by manipulating the main thread's 
+stack pointer and instruction pointer.
+</p><p>
+</p><p align="center"><a name="548"></a><a name="figsignal"></a><img src="The_Performance_of_micro-Kernel-Based_Systems_files/img10" align="bottom" height="130" width="381"><br>
+<strong>Figure 3:</strong> <em>Signal delivery in L<sup>4</sup>Linux.</em> <small class="FOOTNOTE">Arrows denote IPC.
+           Numbers in parentheses indicate the sequence of actions.</small><br>
+</p><p>
+</p><p>
+The signal thread and the emulation library are not protected against the
+main thread. However, the user process can only damage itself by
+modifying them. Global effects of signaling,
+e.g. killing a process, are implemented by the Linux server. The signal thread
+only notifies the user process.
+</p><p>
+</p><h4><a name="SECTION00042060000000000000">Scheduling.</a></h4>
+<p>
+All threads mentioned above are scheduled by the L4 µ-kernel's
+internal scheduler.  This leaves the traditional Linux
+<tt>schedule()</tt> operation with little work to do.  It
+only multiplexes the single Linux server thread across the
+multiple coroutines resulting from concurrent Linux system calls.
+</p><p>
+Whenever a system call completes and the server's reschedule flag is
+not set (meaning there is no urgent need to switch to a different
+kernel coroutine, or there is nothing to do in the kernel), the server
+resumes the corresponding user thread and then sleeps waiting for a
+new system-call message or a wakeup message from one of the interrupt
+handling threads.
+</p><p>
+This behaviour resembles the original Linux scheduling strategy.  By
+deferring the call to <tt>schedule()</tt> until a process' time slice
+is exhausted instead of calling it immediately as soon as a kernel
+activity becomes ready, this approach minimizes the number of coroutine
+switches in the server and gives user processes the chance to make
+several system calls per time slice without blocking.
+</p><p>
+However, there can be many concurrently executing user processes,
+and the actual multiplexing of user threads to the processor is
+controlled by the L4 µ-kernel and mostly beyond the control
+of the Linux server. Native L4 uses hard priorities with round-robin
+scheduling per priority. User-level schedulers can dynamically change
+priority and time slice of any thread. The current version of L<sup>4</sup>Linux
+uses 10 ms time slices and only 4 of 256 priorities, in decreasing order: interrupt top-half,
+interrupt bottom-half, Linux kernel, Linux user process.
+As a result, Linux processes are currently scheduled round robin without priority decay.
+Experiments using more sophisticated user-level schedulers are planned, including
+one for the classical Unix strategy.
+</p><p>
+</p><h4><a name="SECTION00042070000000000000">Supporting Tagged TLBs or Small Spaces.</a></h4>
+<p>
+TLBs are becoming larger in order to hide the increasing costs
+of misses relative to processor speed. Depending on the TLB size, flushing a TLB
+upon address-space switch induces high miss costs for reestablishing
+the TLB working set when switching back to the original address space. 
+Tagged TLBs, currently offered by many processors, form the architectural basis to
+avoid unnecessary TLB flushes. For the Pentium processor, small address spaces
+offer a possibility to emulate TLB tagging.
+However, frequent context switches - in the near future, we expect
+time slices in the order of 10&nbsp;µs -
+can also lead to TLB conflicts having effects comparable to flushes. 
+Two typical problems: (1) due to extensive use of huge libraries, the
+`hello-world' program compiled and linked in the Linux standard fashion 
+has a total size of 80 KB and needs 32 TLB entries
+to execute; (2) identical virtual allocation of code and data in all address
+spaces maximizes TLB conflicts between independent applications.
+In many cases, the overall effect might be negligible. However
+some applications, e.g., a predictable multi-media file system or active
+routing, might suffer significantly.
+</p><p>
+Constructing small, compact, application-dependent address-space layouts can help
+to avoid the mentioned conflicts.  
+For this reason, L<sup>4</sup>Linux offers a special library permitting the customization of
+the code and data used for communicating with the L<sup>4</sup>Linux server.
+In particular, the emulation library and the signal thread can be mapped close to
+the application instead of always mapping to the default high address-space region. 
+By using this library, special servers can be built 
+that can execute in small address spaces, avoiding systematic allocation
+conflicts with standard Linux processes, while nevertheless using
+Linux system calls. Examples of such servers are the pagers used
+for implementing the memory operations described in Section&nbsp;<a href="#vmops">6.2</a>.
+</p><p>
+ <a name="toonaive"></a>
+</p><h3><a name="SECTION00043000000000000000">4.3 &nbsp;&nbsp;&nbsp;The Dual-Space Mistake</a></h3>
+<p>
+In the engineering sciences, learning about mistakes and dead ends
+in design is as important as telling success stories. Therefore,
+this section describes a major design mistake we made
+in an early version of L<sup>4</sup>Linux.
+</p><p>
+For each Linux process, native Linux/x86 creates a 4GB address space
+containing both the user space and the kernel space. This makes
+it very simple for the Linux kernel to access user data: address
+translation and page-fault signaling are done automatically by
+the hardware. We tried
+to imitate this approach by also mapping the current process' user address space
+into the Linux server's address space (Figure&nbsp;<a href="#figolddesign">4</a>). 
+The implementation using a user-level pager was simple.
+However, we could not map multiple 2.5GB Linux-process spaces simultaneously
+into the server's 3GB address space. Either the user-space mapping had to be changed
+on each Linux context switch
+or the server space had to be replicated. Since the first
+method was considered too expensive, we ended up creating one server address 
+space per Linux process. Code and data of the server were shared through all server spaces.
+However, the server spaces differed in their upper regions which had mapped the 
+respective Linux user space.
+</p><p>
+</p><p align="center"><a name="550"></a><a name="figolddesign"></a><img src="The_Performance_of_micro-Kernel-Based_Systems_files/img11" align="bottom" height="128" width="381"><br>
+<strong>Figure 4:</strong> <em>Copyin/out using hardware address translation in an early version of L<sup>4</sup>Linux.</em>
+           <small class="FOOTNOTE">Arrows denote memory read/write operations.</small><br>
+</p><p>
+</p><p>
+Replicating the server space, unfortunately, also required replicating
+the server thread. To preserve the single-server semantics required by the
+uniprocessor version of Linux, we thus had to add 
+synchronization to the Linux kernel. Synchronization required additional cycles and turned out
+to be nontrivial and error-prone.
+</p><p>
+Even worse, 3GB Linux-server spaces made it impossible to use the small-space
+optimization emulating tagged TLBs. Since switching between user and server
+therefore always required a TLB flush, the Linux server had to re-establish
+its TLB working set for every system call or page fault. Correspondingly, the  
+user process was penalized by reloading its TLB working set upon return from 
+the Linux server.
+</p><p>
+We discarded this dual-space approach because it was complicated and not very efficient;
+<tt>getpid</tt> took 18&nbsp;µs instead of 4&nbsp;µs.
+Instead, we decided to use the single-space approach described in Section&nbsp;<a href="#l4linux">4.2</a>:
+only one address space per Linux user process is required and the server space is not replicated.
+However, virtual addresses have to be translated by software to physical addresses for
+any copyin and copyout operation.
+</p><p>
+ Ironically, analytical reasoning
+could have shown us prior to implementation that the dual-space 
+approach cannot outperform the single-space approach:
+a hardware TLB miss on the Pentium
+costs about 25 cycles when the page-table entries hit in the second-level cache
+because the Pentium MMU does not load page-table entries into the primary cache.
+On the same processor, translating a virtual address by software takes
+between 11 and 30 cycles, depending on whether the logical page-table entries
+hit in the first-level or in the second-level cache.
+In general, hardware translation is nevertheless significantly faster because the TLB caches
+translations for later reuse. However, the dual-space approach systematically made
+this reuse for the next system call impossible: due to the large server address space,
+the TLB was flushed every time the Linux-server was called.
+</p><p>
+</p><h3><a name="SECTION00044000000000000000">4.4 &nbsp;&nbsp;&nbsp;The Resulting L<sup>4</sup>Linux Adaption</a></h3>
+<p>
+Table <a href="#tabimplsize">1</a> compares the source code size of the L<sup>4</sup>Linux
+adaption with the size of the native Linux/x86 adaption and the Linux kernel.
+Comment lines and blank lines are not counted.
+2000 lines of the original x86-dependent part could be reused unchanged for the L4 adaption;
+6500 new lines of code had to be written.
+Starting from L4 and Linux, it took about 14 engineer months to build 
+the L<sup>4</sup>Linux system, to stabilize it and to prepare the
+results presented in this paper.
+</p><p>
+</p><p><a name="551"></a>
+  <a name="tabimplsize"></a>
+  </p><div align="center"><p align="center">
+    </p><table border="1" cols="6" rules="groups">
+<caption align="bottom"><strong>Table 1:</strong> <em>Source-code lines for Linux/x86 and L<sup>4</sup>Linux.</em></caption>
+<colgroup><col align="left"></colgroup><colgroup><col align="left"><col align="right"><col align="center"><col align="right"><col align="center"></colgroup><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+                              </td><td colspan="5" align="center" nowrap="nowrap" valign="baseline"> <em>lines of C code</em></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+                              </td><td colspan="2" align="center" nowrap="nowrap" valign="baseline"> <b>Linux/x86</b></td><td align="center" nowrap="nowrap" valign="baseline">
+                              </td><td colspan="2" align="left" nowrap="nowrap" valign="baseline"> <b>L<sup>4</sup>Linux</b></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline"><em>architecture</em>    </td><td align="left" nowrap="nowrap" valign="baseline">          </td><td align="right" nowrap="nowrap" valign="baseline">  2,500  </td><td align="center" nowrap="nowrap" valign="baseline">          </td><td align="right" nowrap="nowrap" valign="baseline">  6,500 </td><td align="center" nowrap="nowrap" valign="baseline"></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+        <em>&nbsp;&nbsp;&nbsp;&nbsp;dependent</em>    </td><td align="left" nowrap="nowrap" valign="baseline"></td><td align="right" nowrap="nowrap" valign="baseline">  2,000  </td><td align="center" nowrap="nowrap" valign="baseline"> <img alt="=" src="The_Performance_of_micro-Kernel-Based_Systems_files/img12" align="bottom" height="7" width="9"> </td><td align="right" nowrap="nowrap" valign="baseline">  2,000 </td><td align="center" nowrap="nowrap" valign="baseline"></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+<p>
+        <em>&nbsp;&nbsp;&nbsp;&nbsp;part</em>         </p></td><td align="left" nowrap="nowrap" valign="baseline">          </td><td align="right" nowrap="nowrap" valign="baseline">  4,500  </td><td align="center" nowrap="nowrap" valign="baseline">          </td><td align="right" nowrap="nowrap" valign="baseline">  8,500 </td><td align="center" nowrap="nowrap" valign="baseline"></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+    Linux kernel          </td><td colspan="5" align="center" nowrap="nowrap" valign="baseline"> &nbsp;&nbsp;&nbsp;&nbsp;105,000</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+    drivers               </td><td colspan="5" align="center" nowrap="nowrap" valign="baseline"> &nbsp;&nbsp;&nbsp;&nbsp;232,700</td></tr>
+</tbody>
+</table>
+</div>
+<p>
+</p><p>
+</p><p>
+We appear to have been successful in our effort of achieving full Linux binary compatibility.
+We have used the system as a development environment and regularly use such applications
+as the X&nbsp;Window system, Emacs, Netscape and X-Pilot.
+L<sup>4</sup>Linux appears to be stable, and, as we'll show, can run such extreme stress test as the 
+AIM benchmark&nbsp;[<a href="#aimbench">2</a>] to completion.
+</p><p>
+ <a name="linuxperf"></a>
+</p><h2><a name="SECTION00050000000000000000">5 &nbsp;&nbsp;&nbsp;Compatibility Performance</a></h2>
+<p>
+In this section, we discuss the performance of L<sup>4</sup>Linux from the perspective
+of pure Linux applications. The conservative criterion for accepting a
+µ-kernel architecture is that existing applications are not significantly 
+penalized. So our first question is
+</p><ul>
+<li> What is the penalty of using L<sup>4</sup>Linux instead of native Linux?
+</li></ul>
+To answer it, we ran identical benchmarks on native Linux and
+on L<sup>4</sup>Linux using the same hardware. Our second question is
+<ul>
+<li> Does the performance of the underlying µ-kernel matter?
+</li></ul>
+To answer it, 
+we compare L<sup>4</sup>Linux to MkLinux&nbsp;[<a href="#mklinux">10</a>], an OSF-developed port of 
+Linux running on the OSF Mach 3.0 µ-kernel.
+MkLinux and L<sup>4</sup>Linux differ basically in the architecture-dependent part,
+except that the authors of MkLinux slightly modified Linux' architecture-independent 
+memory system to get better performance on Mach.
+Therefore, we assume that performance differences are mostly due to the underlying
+µ-kernel.
+<p>
+First, we compare L<sup>4</sup>Linux (which always runs in user mode) to the MkLinux variant 
+that also runs in user mode. 
+Mach is known for slow user-to-user IPC and expensive user-level page-fault handling
+&nbsp;[<a href="#ber:spin2">5</a>, <a href="#sosp">21</a>]. So benchmarks should report a distinct difference between
+L<sup>4</sup>Linux and MkLinux if the µ-kernel efficiency  influences
+the whole system significantly.
+</p><p>
+A faster version of MkLinux uses a co-located server running in kernel mode
+and executing inside the µ-kernel's address space. Similar to Chorus' supervisor
+tasks&nbsp;[<a href="#rozier:chorus">32</a>], co-located (in-kernel) servers communicate much more
+efficiently with each other and with the µ-kernel than user-mode servers do.
+However, in order to improve performance, co-location violates the address-space
+boundaries of a µ-kernel system, which weakens security and safety. So our third question is
+</p><ul>
+<li> How much does co-location improve performance?
+</li></ul>
+This question is evaluated by comparing user-mode L<sup>4</sup>Linux to the in-kernel version of MkLinux.
+<p>
+</p><h3><a name="SECTION00051000000000000000">5.1 &nbsp;&nbsp;&nbsp;Measurement Methodology</a></h3>
+<p>
+To obtain comparable and reproducible performance results, the same
+hardware was used throughout all measurements, including those of Section&nbsp;<a href="#extperf">6</a>: 
+a 133 MHz Pentium PC based on an ASUS P55TP4N motherboard using Intel's 430FX
+chipset, equipped with a 256KB pipeline-burst second-level cache
+and 64MB of 60ns Fast Page Mode RAM.
+</p><p>
+We used version 2 of the L4
+µ-kernel.
+</p><p>
+L<sup>4</sup>Linux is based on Linux version 2.0.21, MkLinux on version 2.0.28.
+According to the `Linux kernel change summaries' [<a href="#linux:kernel-changes">7</a>],
+only performance-neutral bug fixes were added to 2.0.28, mostly in device drivers.
+We consider both versions comparable.
+</p><p>
+Microbenchmarks are used to analyze the detailed behaviour of L<sup>4</sup>Linux 
+mechanisms while macrobenchmarks measure the system's overall performance.
+</p><p>
+Different microbenchmarks
+give significantly different results when measuring operations which
+take only 1 to 5 µs. Statistical methods like calculating the standard deviation
+are misleading: two benchmarks report inconsistent results and both calculate
+very small standard deviation and high confidence. The reason is that a
+deterministic system is being measured that does <em>not behave stochastically</em>. For
+fast operations, most measurement errors are systematic.
+Some reasons are cache conflicts between measurement code and the system to be measured
+or miscalculation of the measurement overhead. We therefore do not only report
+standard deviations but show different microbenchmarks. Their differences
+give an impression of the absolute error. Fortunately, most measured times
+are large enough to show only small relative deviations. For larger operations,
+the above mentioned systematic errors probably add up to a pseudo-stochastic
+behaviour.
+</p><p>
+</p><h3><a name="SECTION00052000000000000000">5.2 &nbsp;&nbsp;&nbsp;Microbenchmarks</a></h3>
+<p>
+For measuring the system-call overhead, <tt>getpid</tt>, the shortest Linux
+system call, was examined. To measure its cost under ideal circumstances, 
+it was repeatedly invoked in a tight loop. Table&nbsp;<a href="#tabgetpid">2</a>
+shows the consumed cycles and the time
+per invocation derived from the cycle numbers.  
+The numbers were obtained using the cycle counter register of the Pentium processor.
+L<sup>4</sup>Linux needs approximately 300 cycles more than native Linux. An additional
+230 cycles are required whenever the trampoline is used instead of the shared library.
+MkLinux shows 3.9 times (in-kernel) or 29 times (user mode) higher
+system-call costs than L<sup>4</sup>Linux using the shared library. Unfortunately,
+L<sup>4</sup>Linux still needs 2.4 times as many cycles as native Linux.
+</p><p>
+</p><p><a name="571"></a>
+    <a name="tabgetpid"></a>
+  </p><div align="center"><p align="center">
+</p><p>
+    </p><table border="1" cols="3" rules="groups">
+<caption align="bottom"><strong>Table 2:</strong> <em><tt>getpid</tt> system-call costs on the different implementations.</em>
+              <small class="FOOTNOTE">(133MHz Pentium)</small></caption>
+<colgroup><col align="left"></colgroup><colgroup><col align="right"><col align="right"></colgroup><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+      <b>System</b> </td><td align="right" nowrap="nowrap" valign="baseline"> <b>Time</b> </td><td align="right" nowrap="nowrap" valign="baseline"> <b>Cycles </b></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Linux                 </td><td align="right" nowrap="nowrap" valign="baseline">   1.68 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 223</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      L<sup>4</sup>Linux              </td><td align="right" nowrap="nowrap" valign="baseline">   3.95 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 526</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      L<sup>4</sup>Linux (trampoline) </td><td align="right" nowrap="nowrap" valign="baseline">   5.66 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 753</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      MkLinux in-kernel     </td><td align="right" nowrap="nowrap" valign="baseline">   15.41 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 2050</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      MkLinux user          </td><td align="right" nowrap="nowrap" valign="baseline">   110.60 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 14710</td></tr>
+</tbody>
+</table>
+
+<p>
+</p></div><p>
+</p><p>
+</p><p>
+Figure <a href="#figsyscallpath">5</a> shows a more detailed breakdown of the L<sup>4</sup>Linux overhead.
+Under native Linux, the basic architectural overhead for entering and leaving kernel mode is 82 cycles,
+the bare hardware costs. In L<sup>4</sup>Linux, it corresponds to 
+two IPCs taking 356 cycles in total. After deducting the
+basic architectural overhead from the total system-call costs, 141 cycles
+remain for native Linux, 170 cycles for L<sup>4</sup>Linux. The small difference of
+both values indicates that indeed IPC is the major cause for additional costs
+in L<sup>4</sup>Linux.
+</p><p>
+When removing the part called <small class="FOOTNOTE">LINUX</small> in
+Figure&nbsp;<a href="#figsyscallpath">5</a>, the L<sup>4</sup>Linux overhead code remains.  It
+uses 45 cache lines, 9% of the first-level cache, including the cache
+L4 needs for IPC.
+</p><p>
+
+</p><div align="center"><p><a name="572"></a><a name="figsyscallpath"></a>
+</p><table border="1" cols="3" rules="groups">
+<caption align="bottom">
+<strong>Figure 5:</strong> <em>Cycles spent for <tt>getpid</tt> in L<sup>4</sup>Linux.</em> <small class="FOOTNOTE">(133MHz Pentium)</small></caption>
+<colgroup><col align="left"><col align="right"><col align="left"></colgroup><tbody><tr><td><b>Client</b></td> <td><b>Cycles</b></td> <td><b>Server</b></td></tr>
+<tr><td>enter emulation library</td> <td>20</td><td></td></tr>
+<tr><td>send system call message</td> <td>168</td> <td>wait for message</td></tr>
+<tr><td></td> <td>131</td> <td>- LINUX -</td></tr>
+<tr><td> receive reply</td> <td>188</td> <td> send reply</td></tr>
+<tr><td>leave emulation library</td> <td> 19</td><td></td></tr>
+<tr><td></td> <td> --- <br> 526 </td> <td></td></tr>
+</tbody></table></div>
+<br>
+<p>
+The <i>lmbench</i> [<a href="#lmbench">29</a>] microbenchmark suite
+measures basic operations like system calls, context switches, memory accesses,
+pipe operations, network operations, etc. 
+by repeating the respective operation a large number of times.
+<i>lmbench</i>'s measurement methods have recently been criticized by 
+Brown and Seltzer&nbsp;[<a href="#brown:hbench">6</a>]. Their improved <i>hbench:OS</i> 
+microbenchmark suite covers a broader spectrum of measurements
+and measures short operations more precisely.
+Both benchmarks have basically been developed to compare different hardware
+from the OS perspective and therefore also include a variety of OS-independent benchmarks,
+in particular measuring the hardware memory system and the disk. Since we always
+use the same hardware for our experiments, we present only the OS-dependent parts.
+The hardware-related measurements gave indeed the same results on all systems.
+</p><p>
+Table&nbsp;<a href="#tabhbench">3</a> shows selected results of <i>lmbench</i> and 
+<i>hbench</i>. It compares native Linux,
+L<sup>4</sup>Linux with and without trampoline, and both versions of MkLinux.
+Figure&nbsp;<a href="#figlmbench">6</a> plots the slowdown of L<sup>4</sup>Linux, co-located and user-mode MkLinux, normalized
+to native Linux. 
+Both versions of
+MkLinux have a much higher penalty than L<sup>4</sup>Linux. Surprisingly, the effect of 
+co-location is rather small compared to the effect of using L4. However, even the
+L<sup>4</sup>Linux penalties are not as low as we hoped.
+</p><p>
+</p><p>
+</p><p align="center"><a name="573"></a>
+<a name="figlmbench"></a>
+<img src="The_Performance_of_micro-Kernel-Based_Systems_files/diag1" height="204" width="698">
+<!--IMG WIDTH=794 HEIGHT=227 ALIGN=BOTTOM ALT="figure320" SRC="img15.gif" -->
+<br>
+<strong>Figure 6:</strong> <em><i>lmbench</i> results, normalized to native Linux.</em>
+           <small class="FOOTNOTE">
+           These are presented as slowdowns: a shorter bar is a better result. 
+           [<i>lat</i>] is a latency measurement, [<i>bw</i><sup>-1</sup>] the inverse of a bandwidth one.
+           Hardware is a 133MHz Pentium.
+</small><br>
+
+</p><p><a name="574"></a>
+    <a name="tabhbench"></a>
+  </p><div align="center"><p align="center">
+</p><p>
+    </p><table border="1" cols="6" rules="groups">
+<caption align="bottom"><strong>Table 3:</strong> <em>Selected OS-dependent <i>lmbench</i>
+        and <i>hbench-OS</i> results.</em>
+             <small class="FOOTNOTE">(133MHz Pentium.) Standard deviations are shown in parentheses.</small></caption>
+<colgroup><col align="left"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right"><col align="right"></colgroup><colgroup><col align="right"><col align="right"></colgroup><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+      <b>Test</b> </td><td colspan="1" align="center" nowrap="nowrap" valign="baseline"> <b>Linux</b></td><td colspan="2" align="center" nowrap="nowrap" valign="baseline"> <b>L<sup>4</sup>Linux </b></td><td colspan="2" align="center" nowrap="nowrap" valign="baseline"> <b>MkLinux</b></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+                </td><td align="right" nowrap="nowrap" valign="baseline">             
+       </td><td colspan="1" align="center" nowrap="nowrap" valign="baseline"> <tt>libc.so</tt></td><td colspan="1" align="center" nowrap="nowrap" valign="baseline"> trampoline</td><td colspan="1" align="center" nowrap="nowrap" valign="baseline"> in-kernel</td><td colspan="1" align="center" nowrap="nowrap" valign="baseline"> user</td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><b><em>lmbench</em> Results</b></td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><em>Latency&nbsp;&nbsp;[µs] </em></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">write to /dev/null    </td><td align="right" nowrap="nowrap" valign="baseline">     2.00 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline">     5.26 &nbsp;(10%) </td><td align="right" nowrap="nowrap" valign="baseline">    7.80 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline">    24.33 &nbsp;(9%) </td><td align="right" nowrap="nowrap" valign="baseline">    128.97 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Null Process    </td><td align="right" nowrap="nowrap" valign="baseline">   973    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  2749    &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">  2765    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  3038 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">   3601    &nbsp;(1%)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Simple Process  </td><td align="right" nowrap="nowrap" valign="baseline">  7400    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 12058    &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 12393    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 14066    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  19667    &nbsp;(1%)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      /bin/sh Process </td><td align="right" nowrap="nowrap" valign="baseline"> 42412    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 61115    &nbsp;(7%) </td><td align="right" nowrap="nowrap" valign="baseline"> 62353    &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 73201    &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 106853    &nbsp;(1%)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Mmap Latency    </td><td align="right" nowrap="nowrap" valign="baseline">    52.20 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">    64.28 &nbsp;(7%) </td><td align="right" nowrap="nowrap" valign="baseline">    69.35 &nbsp;(8%) </td><td align="right" nowrap="nowrap" valign="baseline">   345.33 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">    566.06 &nbsp;(1%)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      2-proc ctxsw    </td><td align="right" nowrap="nowrap" valign="baseline">     7.00 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline">    16.22 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline">    18.20 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline">    78.67 &nbsp;(9%) </td><td align="right" nowrap="nowrap" valign="baseline">     79.87 &nbsp;(7%)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      8-proc ctxsw    </td><td align="right" nowrap="nowrap" valign="baseline">    12.40 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">    22.22 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline">    28.00 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">    85.67 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">     96.26 &nbsp;(6%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+      Pipe            </td><td align="right" nowrap="nowrap" valign="baseline">   29.00 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  52.07 &nbsp;(7%) </td><td align="right" nowrap="nowrap" valign="baseline">   69.40 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline">  308.33 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  722.42 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      UDP             </td><td align="right" nowrap="nowrap" valign="baseline">  159.40 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 243.02 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">  263.80 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  613.33 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 1040.26 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      RPC/UDP         </td><td align="right" nowrap="nowrap" valign="baseline">  321.40 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 526.57 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">  528.80 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 1095.33 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 1743.29 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      TCP             </td><td align="right" nowrap="nowrap" valign="baseline">  207.40 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 287.57 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">  308.80 &nbsp;(5%) </td><td align="right" nowrap="nowrap" valign="baseline">  562.00 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 1047.03 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      RPC/TCP         </td><td align="right" nowrap="nowrap" valign="baseline">  459.60 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 729.76 &nbsp;(5%) </td><td align="right" nowrap="nowrap" valign="baseline">  736.20 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 1243.33 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 2014.90 &nbsp;(2%) </td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><em>Bandwidth&nbsp;&nbsp;[MB/s]</em></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Pipe            </td><td align="right" nowrap="nowrap" valign="baseline"> 40.50 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 37.61 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 35.25 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 13.11 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 10.57 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      TCP             </td><td align="right" nowrap="nowrap" valign="baseline"> 18.03 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 13.23 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 13.41 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 11.54 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 10.88 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      File reread     </td><td align="right" nowrap="nowrap" valign="baseline"> 41.51 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 40.43 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 40.26 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 37.51 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 34.04 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Mmap reread     </td><td align="right" nowrap="nowrap" valign="baseline"> 65.73 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 54.96 &nbsp;(6%) </td><td align="right" nowrap="nowrap" valign="baseline"> 55.03 &nbsp;(7%) </td><td align="right" nowrap="nowrap" valign="baseline"> 61.54 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline"> 58.66 &nbsp;(7%) </td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><b><em>hbench:OS</em> Results</b></td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><em>Latency&nbsp;&nbsp;[µs] </em></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">getpid                </td><td align="right" nowrap="nowrap" valign="baseline">  1.69 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline"> 4.55  &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  6.91 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  19.14 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  111.9 &nbsp;(1%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+write to /dev/null    </td><td align="right" nowrap="nowrap" valign="baseline">  2.74 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline"> 6.67  &nbsp;(5%) </td><td align="right" nowrap="nowrap" valign="baseline">  8.20 &nbsp;(4%)</td><td align="right" nowrap="nowrap" valign="baseline">  26.30 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  124.1 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Null Process    </td><td align="right" nowrap="nowrap" valign="baseline">   983 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 2561  &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  2904 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">   3101 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">   3572 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Simple Process  </td><td align="right" nowrap="nowrap" valign="baseline">  7490 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 12431 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 12433 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  14144 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  19255 &nbsp;(0%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      /bin/sh Process </td><td align="right" nowrap="nowrap" valign="baseline"> 40864 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 58845 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 57968 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  69990 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline"> 100763 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Mmap Latency 4KB</td><td align="right" nowrap="nowrap" valign="baseline">  25.2 &nbsp;(0%) </td><td align="right" nowrap="nowrap" valign="baseline"> 35.0  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  49.4 &nbsp;(2%)</td><td align="right" nowrap="nowrap" valign="baseline">  242.7 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  439.6 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Mmap Latency 8MB</td><td align="right" nowrap="nowrap" valign="baseline">  53.7 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 54.0  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  74.9 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  360.1 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  561.9 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      ctx 0K 2        </td><td align="right" nowrap="nowrap" valign="baseline">  8.05 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 17.1  &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline">  20.0 &nbsp;(3%)</td><td align="right" nowrap="nowrap" valign="baseline">   69.6 &nbsp;(3%)</td><td align="right" nowrap="nowrap" valign="baseline">   79.9 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      ctx2 0K 2       </td><td align="right" nowrap="nowrap" valign="baseline">  8.45 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline"> 17.0  &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">  16.7 &nbsp;(6%)</td><td align="right" nowrap="nowrap" valign="baseline">   76.2 &nbsp;(2%)</td><td align="right" nowrap="nowrap" valign="baseline">   88.6 &nbsp;(3%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+      Pipe            </td><td align="right" nowrap="nowrap" valign="baseline"> 31.0  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 62.3  &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">  78.99 &nbsp;(3%)</td><td align="right" nowrap="nowrap" valign="baseline">  316.1 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  721.6 &nbsp;(1%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      UDP             </td><td align="right" nowrap="nowrap" valign="baseline">  154  &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 214   &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">  251 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">    625 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  1037 &nbsp;(1%)  </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      RPC/UDP         </td><td align="right" nowrap="nowrap" valign="baseline">  328  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 554   &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  577 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">   1174 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  1763  &nbsp;(1%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      TCP             </td><td align="right" nowrap="nowrap" valign="baseline">  206  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 264   &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  302 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline">    568 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  1030  &nbsp;(1%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      RPC/TCP         </td><td align="right" nowrap="nowrap" valign="baseline">  450  &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 754   &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline">  760 &nbsp;(3%) </td><td align="right" nowrap="nowrap" valign="baseline">   1344 &nbsp;(1%)</td><td align="right" nowrap="nowrap" valign="baseline">  2035  &nbsp;(1%) </td></tr>
+</tbody><tbody>
+<tr><td colspan="6" align="center" nowrap="nowrap" valign="baseline"><em>Bandwidth&nbsp;&nbsp;[MB/s]</em></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Pipe 64KB       </td><td align="right" nowrap="nowrap" valign="baseline">  40.3 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 35.5 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 32.6 &nbsp;(2%) </td><td align="right" nowrap="nowrap" valign="baseline"> 12.7 &nbsp;(1%)    </td><td align="right" nowrap="nowrap" valign="baseline"> 10.4 &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      TCP  64KB       </td><td align="right" nowrap="nowrap" valign="baseline">  18.8 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 14.6 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 14.1 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 11.6 &nbsp;(1%)    </td><td align="right" nowrap="nowrap" valign="baseline"> 9.4  &nbsp;(2%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      File read 64/64 </td><td align="right" nowrap="nowrap" valign="baseline">  35.3 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 34.5 &nbsp;(4%) </td><td align="right" nowrap="nowrap" valign="baseline"> 32.2 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 32.7 &nbsp;(3%)    </td><td align="right" nowrap="nowrap" valign="baseline"> 30.1 &nbsp;(4%) </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Mmap reread 64KB</td><td align="right" nowrap="nowrap" valign="baseline">  97.5 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 91.4 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 78.8 &nbsp;(1%) </td><td align="right" nowrap="nowrap" valign="baseline"> 89.4 &nbsp;(1%)    </td><td align="right" nowrap="nowrap" valign="baseline"> 77.7 &nbsp;(3%) </td></tr>
+</tbody>
+</table>
+
+<p>
+</p></div><p></p><h3><a name="SECTION00053000000000000000">5.3 &nbsp;&nbsp;&nbsp;Macrobenchmarks</a></h3>
+<p>
+In the first macrobenchmark experiment, we measured the time needed to
+recompile the Linux server (Figure&nbsp;<a href="#complin">7</a>).
+L<sup>4</sup>Linux was 6-7% slower than native Linux but 10-20% faster than
+both MkLinux versions.
+</p><p>
+</p><p align="center"><a name="561"></a>
+<a name="complin"></a>
+<!-- IMG WIDTH=341 HEIGHT=77 ALIGN=BOTTOM ALT="figure396" SRC="img16.gif" -->
+<img src="The_Performance_of_micro-Kernel-Based_Systems_files/diag2" height="87" width="450">
+<br>
+<strong>Figure 7:</strong> <em>Real time for compiling the Linux Server.</em>
+                     <small class="FOOTNOTE">(133MHz Pentium)</small><br>
+</p><p>
+</p><p>
+</p><p>
+A more systematic evaluation was done using the commercial AIM multiuser
+benchmark suite VII.  It uses Load Mix Modeling to test how well multiuser
+systems perform under different application loads
+[<a href="#aimbench">2</a>]. (The AIM benchmark results presented in this
+  paper are not certified by AIM Technology.)
+</p><p>
+AIM uses the shared <tt>libc.so</tt> so that the trampoline overhead is
+automatically avoided. Depending on simulated load, Figures&nbsp;<a href="#figaimresult1">8</a>
+and&nbsp;<a href="#figaimresult2">9</a> show the required time
+and the achieved throughput (jobs per minute) for native Linux, 
+L<sup>4</sup>Linux, and both MkLinux versions. The AIM benchmark successively increases the load until
+the maximum throughput of the system is determined. (For this reason, it stops at a lower load
+for MkLinux than for L<sup>4</sup>Linux and native Linux.)
+</p><p>
+</p><p align="center"><a name="562"></a><a name="figaimresult1"></a><img alt="[Benchmark results diagram]" src="The_Performance_of_micro-Kernel-Based_Systems_files/img17" align="bottom" height="255" width="380"><br>
+<strong>Figure 8:</strong> <em>AIM Multiuser Benchmark Suite VII.</em> <small class="FOOTNOTE">Real time
+    per benchmark run depending on AIM load units. (133MHz Pentium)</small><br>
+</p><p>
+</p><p align="center"><a name="563"></a><a name="figaimresult2"></a><img alt="[Benchmark results diagram]" src="The_Performance_of_micro-Kernel-Based_Systems_files/img18" align="bottom" height="255" width="380"><br>
+<strong>Figure 9:</strong> <em>AIM Multiuser Benchmark Suite VII.</em> <small class="FOOTNOTE">Jobs completed
+    per minute depending on AIM load units. (133MHz Pentium)</small><br>
+</p><p>
+For native Linux, AIM measures a maximum load of 130 jobs per minute. 
+L<sup>4</sup>Linux achieves 123 jobs per minute, 95% of native Linux. 
+The corresponding numbers for user-mode MkLinux are 81 jobs per minute, 62% of native Linux, 
+and 95 (73%) for the in-kernel version.
+</p><p>
+Averaged over all loads, L<sup>4</sup>Linux is 8.3% slower than native Linux,
+and 6.8% slower at the maximum load. This is consistent with the 6-7% 
+we measured for recompiling Linux.
+</p><p>
+User-mode MkLinux is on average 49% slower than native Linux, and 60% at its
+maximum load. The co-located in-kernel version of MkLinux is 29% slower on
+average than Linux, and 37% at maximum load.
+</p><p>
+</p><h3><a name="SECTION00054000000000000000">5.4 &nbsp;&nbsp;&nbsp;Analysis</a></h3>
+<p>
+The macrobenchmarks answer our first question. The current implementation
+of L<sup>4</sup>Linux comes reasonably close to the behavior of native Linux, even under
+high load. Typical penalties range from 5% to 10%.
+</p><p>
+Both macro and microbenchmarks clearly indicate that the performance
+of the underlying µ-kernel matters. We are particular confident
+in this result because we did not compare different Unix variants but
+two µ-kernel implementations of the same OS.
+</p><p>
+Furthermore, all benchmarks illustrate that co-location on its own is not
+sufficient to overcome performance deficiencies when the basic µ-kernel 
+does not perform well. It would be an interesting experiment to see whether
+introducing co-location in L4 would have a visible effect or not.
+</p><p>
+           <a name="extperf"></a>
+</p><h2><a name="SECTION00060000000000000000">6 &nbsp;&nbsp;&nbsp;Extensibility Performance</a></h2>
+<p>
+No customer would use a µ-kernel if it offered only the classical
+Unix API, even if the µ-kernel imposed zero penalty on the
+OS personality on top. So we have to ask for the ``added value''
+the µ-kernel gives us. 
+One such is that it enables <em>specialization</em> (improved
+implementation of special OS functionality&nbsp;[<a href="#pu:specialization">31</a>]) and buys us
+<em>extensibility</em>, i.e., permits the orthogonal implementation
+of new services and policies that are not covered by and cannot
+easily be added to a conventional workstation OS. Potential
+application fields are databases, real-time, multi-media and security.
+</p><p>
+In this section, we are interested in
+the corresponding performance aspects for L4 with L<sup>4</sup>Linux
+running on top. We ask three questions:
+</p><ul>
+<li> Can we add services outside L<sup>4</sup>Linux to improve performance by specializing
+      Unix functionality?
+</li><li> Can we improve certain applications by using native
+      µ-kernel mechanisms in addition to the classical API?
+</li><li> Can we achieve high performance for non-classical, Unix-incompatible
+      systems coexisting with ?
+</li></ul>      
+Currently, these questions can only be discussed on the basis of selected examples.
+The overall quantitative effects on large systems remain still unknown. 
+Nevertheless, we consider the ``existence proofs''
+of this section to be a necessary precondition to answer the aforementioned
+questions positively for a broad variety of applications.
+<p>
+</p><h3><a name="SECTION00061000000000000000">6.1 &nbsp;&nbsp;&nbsp;Pipes and RPC</a></h3>
+<p>
+It is widely accepted that IPC can be implemented significantly faster
+in a µ-kernel environment than in classical monolithic
+systems. However, applications have to be rewritten to make use of
+it. Therefore, in this section we compare classical Unix pipes, pipe emulations 
+through µ-kernel IPC,  and blocking RPC to get an estimate for the cost of
+emulation on various levels.
+</p><p>
+We compare four variants of data exchange. The first is the 
+standard pipe mechanism provided by the Linux kernel:
+(1) runs on native Linux/x86;
+(1a) runs on L<sup>4</sup>Linux and uses the shared library,
+(1b) uses the trampoline mechanism instead;
+(1c) runs on the user-mode server of MkLinux,
+and (1d) on the   co-located MkLinux server.
+</p><p>
+Although the next three variants run on L<sup>4</sup>Linux, they do not use the Linux server's
+pipe implementation. <em>Asynchronous pipes on L4</em> (2) is a user-level pipe 
+implementation that runs on bare L4, uses L4 IPC for communication, and needs no Linux kernel.
+The emulated pipes are POSIX compliant, except that they do not support signaling. 
+Since L4 IPC is strictly synchronous, an
+additional thread is responsible for buffering and cross-address-space 
+communication with the receiver.
+</p><p>
+<em>Synchronous RPC</em> (3) uses blocking IPC directly, without buffering data.
+This approach is not semantically equivalent to the previous variants
+but provides blocking RPC semantics.
+We include it in this comparison because applications using RPC in many cases
+do not need asynchronous pipes, so they can benefit from this specialization.
+</p><p>
+For <em>synchronous mapping RPC</em> (4), the sender temporarily maps pages into the 
+receiver's address space. Since mapping is a special form of L4 IPC, it can be 
+freely used between user processes and is secure: mapping requires agreement 
+between sender and receiver and the sender can only map its own pages.
+The measured times include the cost for subsequent unmapping operations.
+For hardware reasons, latency here is measured by mapping one page, not one byte.
+The bandwidth measurements map aligned 64KB regions.
+</p><p>
+For measurements, we used the corresponding <i>lmbench</i> routines.
+They measure latency by repeatedly sending 1 byte back and forth synchronously
+(ping-pong) and  bandwidth by sending about 50MB in 64KB blocks to the receiver. 
+The results of Table&nbsp;<a href="#tabpipe">4</a> show
+that the latency and the bandwidth of the original monolithic
+pipe implementation (1) on native Linux can be improved by emulating 
+asynchronous pipe operations on synchronous L4 IPC (2).
+Using synchronous L4 RPC (2) requires changes to some applications but
+delivers a factor of 6 improvement in latency over native Linux.
+</p><p>
+</p><p><a name="564"></a>
+    <a name="tabpipe"></a>
+  </p><div align="center"><p align="center">
+</p><p>
+    </p><table border="1" cols="3" rules="groups">
+<caption align="bottom"><strong>Table 4:</strong> <em>Pipe and RPC performance.</em> <small class="FOOTNOTE">(133MHz Pentium.) Only communication costs
+             are measured, not the costs to generate or consume data.</small></caption>
+<colgroup><col align="left"></colgroup><colgroup><col align="right"><col align="right"></colgroup><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+      <b>System</b> </td><td align="right" nowrap="nowrap" valign="baseline"> <b>Latency</b> </td><td align="right" nowrap="nowrap" valign="baseline"> <b>Bandwidth</b></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">(1)  Linux pipe            </td><td align="right" nowrap="nowrap" valign="baseline">   29 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 41 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (1a)  L<sup>4</sup>Linux pipe         </td><td align="right" nowrap="nowrap" valign="baseline">   46 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 40 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (1b)  L<sup>4</sup>Linux (trampoline) pipe </td><td align="right" nowrap="nowrap" valign="baseline">   56 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 38 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (1c)  MkLinux (user) pipe       </td><td align="right" nowrap="nowrap" valign="baseline">  722 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 10 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (1d)  MkLinux (in-kernel) pipe  </td><td align="right" nowrap="nowrap" valign="baseline">  316 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 13 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+ (2)  L4     pipe           </td><td align="right" nowrap="nowrap" valign="baseline">   22 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 48-70 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (3)  synchronous L4 RPC    </td><td align="right" nowrap="nowrap" valign="baseline">   5 µs </td><td align="right" nowrap="nowrap" valign="baseline">65-105 MB/s </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+ (4)  synchronous mapping RPC </td><td align="right" nowrap="nowrap" valign="baseline">  12 µs </td><td align="right" nowrap="nowrap" valign="baseline"> 2470-2900 MB/s </td></tr>
+</tbody>
+</table>
+
+<p>
+</p></div><p>
+</p><p>
+Since the bandwidth measurement moves 64KB chunks of data, its performance
+is basically determined by the memory hardware, in particular by the direct-mapped second-level cache.
+As proposed by Jonathan Shapiro&nbsp;[<a href="#shap:iwooos">35</a>], L4 IPC simulates a write-allocate cache
+by prereading the destination area when copying longer messages. 
+In the best case, Linux allocates pages such that source and destination do
+not overlap in the cache; in the worst case, the copy operation flushes every
+data prior to its next usage. A similar effect can can be seen for L4 pipes.
+</p><p>
+Linux copies data twice for pipe communication but uses only a fixed one-page
+buffer in the kernel. Since, for long streams, reading/writing this buffer always 
+hit in the primary cache, this special double copy performs nearly as fast as
+a single bcopy. The deviation is small because the <i>lmbench</i> program
+always sends the same 64KB and the receiver never reads the data from memory.
+As a consequence, the source data never hits the primary cache, always hits the
+secondary cache and the destination data always misses both caches since
+the Pentium caches do not allocate cache lines on write misses.
+</p><p>
+Method (4) achieves a nearly infinite bandwidth due to the low costs of mapping.
+To prevent misinterpretations: infinite bandwidth only means that the
+receiver gets the data without communication penalty.
+Memory reads are still required to use the data.
+</p><p>
+ <a name="vmops"></a>
+</p><h3><a name="SECTION00062000000000000000">6.2 &nbsp;&nbsp;&nbsp;Virtual Memory Operations</a></h3>
+<p>
+Table&nbsp;<a href="#tabvops">5</a> shows the times for selected memory management
+operations. The first experiment belongs to the extensibility category, i.e.,
+it tests a feature that is not available under pure Linux:
+<em>Fault</em> measures the time needed to resolve a page fault by a 
+user-defined pager in a separate user address space that simply maps 
+an existing page. The
+measured time includes the user instruction, page fault, notification of the
+pager by IPC, mapping a page and completing the original instruction.
+</p><p>
+</p><p><a name="565"></a>
+    <a name="tabvops"></a>
+  </p><div align="center"><p align="center">
+</p><p>
+    </p><table border="1" cols="3" rules="groups">
+<caption align="bottom"><strong>Table 5:</strong> <em>Processor time for virtual-memory benchmarks.</em>
+             <small class="FOOTNOTE">(133MHz Pentium)</small></caption>
+<colgroup><col align="left"></colgroup><colgroup><col align="right"><col align="right"></colgroup><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+              </td><td align="right" nowrap="nowrap" valign="baseline"> <b>L4   </b></td><td align="right" nowrap="nowrap" valign="baseline"> <b>Linux </b></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Fault   </td><td align="right" nowrap="nowrap" valign="baseline"> 6.2  µs </td><td align="right" nowrap="nowrap" valign="baseline"> n/a    </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Trap    </td><td align="right" nowrap="nowrap" valign="baseline"> 3.4  µs </td><td align="right" nowrap="nowrap" valign="baseline"> 12 µs </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Appel1  </td><td align="right" nowrap="nowrap" valign="baseline"> 12&nbsp;&nbsp;   µs </td><td align="right" nowrap="nowrap" valign="baseline"> 55 µs </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      Appel2  </td><td align="right" nowrap="nowrap" valign="baseline"> 10&nbsp;&nbsp;   µs </td><td align="right" nowrap="nowrap" valign="baseline"> 44 µs </td></tr>
+</tbody>
+</table>
+
+<p>
+</p></div><p>
+</p><p>
+The next three experiments are taken from Appel and Li&nbsp;[<a href="#appel/li">3</a>]. We compare
+the Linux version with an implementation using native L4 mechanisms.
+<em>Trap</em> measures the latency between a write operation to a write-protected page
+and the invocation of the related exception handler.
+<em>Appel1</em> measures the time to access a randomly selected protected page where
+the fault handler unprotects the page, protects some other page and and resumes
+the faulting access (`trap+prot1+unprot').
+<em>Appel2</em> first protects 100 pages, then accesses them in a
+random sequence where the fault handler only unprotects the page and 
+resumes the faulting operation (`protN+trap+unprot').
+For L4, we reimplemented the fault handlers by associating
+a specialized pager to the thread executing the test. The new pager handles
+resolvable page faults as described above and propagates unresolvable page faults
+to the Linux server.
+</p><p>
+</p><h3><a name="SECTION00063000000000000000">6.3 &nbsp;&nbsp;&nbsp;Cache Partitioning</a></h3>
+<p>
+Real-time applications need a memory management different from the one Linux implements. 
+L4's hierarchical user-level pagers allows both the L<sup>4</sup>Linux memory system and 
+a dedicated real-time one to be run
+in parallel. This section evaluates how well this works in practice.
+</p><p>
+In real-time systems, the optimization criterion is not the average 
+but the worst-case execution time. Since a real-time task has to meet its deadline
+under all circumstances, sufficient resources for the worst-case
+must always be allocated and scheduled. The real-time load is limited by the sum of
+worst-case execution times, worst-case memory consumption, etc.
+In contrast to conventional applications, the average behaviour is only
+of secondary importance.
+</p><p>
+All real-time applications rely on predictable scheduling.
+Unfortunately, memory caches make it very hard to schedule processor time
+predictably. If two threads use the same cache lines,
+executing both threads interleaved increases the total time not only by the
+context-switching costs but additionally by the cache-interference costs which
+are much harder to predict. If the operating system does not know or cannot
+control the cache usage of all tasks, the cache-interference costs are unpredictable.
+</p><p>
+In [<a href="#liedtke/haertig/hohmuth:pred">26</a>], we described how a main-memory manager (a pager) on top
+of L4 can be used to partition the second-level cache between multiple real-time tasks
+and to isolate real-time from timesharing applications.
+</p><p>
+In one of the experiments, a 64<span class="sf">x</span>64-matrix multiplication
+is periodically interrupted by a synthetic load that maximizes cache conflicts. 
+Uninterrupted, the matrix multiplication takes 10.9 ms. Interrupted every 100 µs,
+its worst-case execution time is 96.1 ms, a slowdown by a factor of 8.85.
+</p><p>
+In the cache-partitioning case, the pager allocates 3 secondary-cache pages
+exclusively to the matrix multiplication out of a total of 64 such pages. 
+This neither avoids primary-cache
+interference nor secondary-cache misses for the matrix multiplication whose data working
+set is 64KB. However, by avoiding secondary-cache interference with other
+tasks, the worst-case execution time is reduced to 24.9ms, a slowdown of only 2.29.
+From a real-time perspective, the partitioned matrix multiplication is nearly 4 times ``faster''
+than the unpartitioned one.
+</p><p>
+Allocating resources to the real-time system degrades timesharing performance. However,
+the described technique enables customized dynamic partitioning of system
+resources between real-time and timesharing system.
+</p><p>
+</p><h3><a name="SECTION00064000000000000000">6.4 &nbsp;&nbsp;&nbsp;Analysis</a></h3>
+<p>
+Pipes and some VM operations are examples for improving
+Unix-compatible functionality by using µ-kernel primitives.
+RPC and the use of user-level pagers for VM operations illustrate
+that Unix-incompatible or only partially compatible functions can be
+added to the system that outperform implementations based on the Unix API.
+</p><p>
+The real-time memory management shows that a µ-kernel can offer 
+good possibilities for coexisting systems that are based on completely
+different paradigms. There is some evidence that the µ-kernel
+architecture enables to implement high-performance non-classical systems
+cooperating with a classical timesharing OS.
+</p><p>
+    <a name="secalternatives"></a>
+</p><h2><a name="SECTION00070000000000000000">7 &nbsp;&nbsp;&nbsp;Alternative Basic Concepts</a></h2>
+<p>
+In this section, we address questions whether a mechanism lower-level than IPC
+or a grafting model could improve the µ-kernel performance.
+</p><p>
+</p><h3><a name="SECTION00071000000000000000">7.1 &nbsp;&nbsp;&nbsp;Protected Control Transfers</a></h3>
+<p>
+VM/370&nbsp;[<a href="#vm/370">28</a>] was built on the paradigm of virtualizing and 
+multiplexing the underlying hardware. Recently, Engler, Kaashoek and O'Toole&nbsp;[<a href="#engler:exo2">12</a>]
+applied a similar principle to µ-kernels. Instead of a
+complete one-to-one virtualization of the hardware (which had turned out
+to be inefficient in VM/370), they support selected hardware-similar
+primitives and claim:
+``The lower the level of a primitive, the more efficiently it can be
+implemented and the more latitude it grants to implementors of higher-level 
+abstractions.'' Instead of implementing
+abstractions like IPC or address spaces, only hardware mechanisms such as
+TLBs should be multiplexed and exported securely.
+</p><p>
+From this point of view, IPC might be too high-level an abstraction
+to be implemented with optimum efficiency. Instead, a
+<em>protected control transfer</em> (PCT) as proposed in&nbsp;[<a href="#engler:exo2">12</a>]
+might be more faster.
+PCT is similar to a hardware interrupt: a parameterless cross-address-space
+procedure call via a callee-defined call gate.
+</p><p>
+Indeed, when we started the design of L4/Alpha, we first had the impression
+that PCT could be implemented more efficiently than simple IPC. We estimated
+30 cycles against 80 cycles (no TLB or cache misses assumed).
+</p><p>
+However, applying techniques similar to those used for IPC-path optimization
+in the Pentium version of L4, we ended up with 45 cycles for IPC versus 38 cycles
+for PCT on the Alpha processor. A detailed description can be found in
+table <a href="#tabIPCperf">6</a>.
+The 7 additional cycles required for IPC provide synchronization, message transfer
+and stack allocation. Most server applications need these features and must therefore
+spend the cycles additionally to the PCT costs. Furthermore, IPC makes 1-to-<i>n</i> messages
+simple since it includes starting the destination threads.
+</p><p>
+</p><p><a name="567"></a>
+  <a name="tabIPCperf"></a>
+  </p><div align="center"><p align="center">
+</p><p>
+    </p><table border="1" cols="5" rules="groups">
+<caption align="bottom"><strong>Table 6:</strong> <em>PCT versus IPC; required cycles on Alpha 21164.</em>
+          <small class="FOOTNOTE">
+           For the PCT implementation we made the assumptions that
+           (a) the entry address for the callee is maintained in some kernel
+           control structure;
+           (b) the callee must be able to specify a stack for
+               the PCT call or - if the caller specifies it - the callee must be able
+               to check it (the latter case requires the kernel to supply the callers identity);
+           (c) stacking of return address and address space is
+               needed.
+           The cycles needed on user level to check the identity are left out of
+           the comparison.</small>
+          </caption>
+<col align="left"><col align="center"><col align="center"><col align="center"><col align="justify">
+<tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">
+      <b>Operation</b> </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> <b>PCT</b> </td><td align="center" nowrap="nowrap" valign="baseline"> <b>IPC</b> </td><td align="left" valign="baseline"> <b>Comment</b></td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">enter PAL mode       </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 5  </td><td align="center" nowrap="nowrap" valign="baseline"> 5  </td><td align="left" valign="baseline"></td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      open frame           </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 7  </td><td align="center" nowrap="nowrap" valign="baseline"> 7  </td><td align="left" valign="baseline"> setup stack frame to allow multiple
+                                       interrupts, TLB misses and simplify
+                                       thread switching </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      send/receive         </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 0.5</td><td align="left" valign="baseline"> determine operation</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      test receiver valid  </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 2  </td><td align="center" nowrap="nowrap" valign="baseline"> 2  </td><td align="left" valign="baseline"> </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      test no chief xfer   </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 0.5</td><td align="left" valign="baseline"> </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      receiver accepts?    </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 1 </td><td align="left" valign="baseline"> can we do the transfer </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      set my rcv timeout   </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 1 </td><td align="left" valign="baseline"> </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      save rcv parameters  </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 2 </td><td align="left" valign="baseline"> perform the receive </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      verify queuing status </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 1  </td><td align="left" valign="baseline"> to set wakeup-queueing invalid, if timeout NEVER </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      context switch       </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 10 </td><td align="center" nowrap="nowrap" valign="baseline"> 10 </td><td align="left" valign="baseline"> switch address-space number</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      kernel thread switch </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="center" nowrap="nowrap" valign="baseline"> 6  </td><td align="left" valign="baseline"> </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      set caller id  </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 2   </td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="left" valign="baseline"> save caller id for pct_ret </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      find callee entry    </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 2 </td><td align="center" nowrap="nowrap" valign="baseline"> - </td><td align="left" valign="baseline"> pct entry address in callee</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      close frame          </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 7 </td><td align="center" nowrap="nowrap" valign="baseline"> 7 </td><td align="left" valign="baseline"> </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline"> 
+      leave PAL mode       </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 2 </td><td align="center" nowrap="nowrap" valign="baseline"> 2  </td><td align="left" valign="baseline"> </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">total                </td><td align="center" nowrap="nowrap" valign="baseline"></td><td align="center" nowrap="nowrap" valign="baseline"> 38 </td><td align="center" nowrap="nowrap" valign="baseline"> 45 </td><td align="left" valign="baseline"> 
+    </td></tr>
+</tbody>
+</table>
+</div>
+<p>
+</p><p>
+</p><p>
+In addition, L4-style IPC provides message diversion (using Clans &amp;
+Chiefs [<a href="#clans">20</a>, <a href="#l4ref">23</a>]). 
+A message crossing a clan border is redirected to the user-level chief of the clan
+which can inspect and handle the message. This can be used as a basis for the
+implementation of mandatory access control policies or isolation of suspicious objects. 
+For security reasons, redirection has
+to be enforced by the kernel. Clan-based redirection also enables distributed
+IPC by means of a user-level network server. Each machine is encapsulated by a clan so that
+inter-machine IPC is automatically redirected to the network server which forwards
+it through the network.
+</p><p>
+Taking the additionally required user-level cycles into account, we
+currently see no performance benefit for PCT. 
+However, a conceptual difference
+should be noted: A PCT takes the thread to another address space so that the set
+of active threads does not change. An IPC transfers a message from a sender thread
+to a destination thread; both threads remain in their respective address spaces but
+the set of active threads changes. Lazy scheduling techniques&nbsp;[<a href="#sosp">21</a>] remove
+the additional costs of the second model so that in most cases both are equivalent
+from a performance point of view.
+</p><p>
+However, IPC requires a preallocated system resource,
+the destination thread. If <i>n</i> threads want to execute RPCs to the same server domain
+simultaneously, at least <i>n</i> threads have to be allocated in the server. This
+problem is not as significant with PCT: only <i>n</i> user-level stacks have to be allocated,
+no kernel resources. On the other hand, in the IPC model, a server can easily
+preallocate kernel and user resources, threads and stacks, <em>dedicated to
+specific applications</em>. This helps to implement guaranteed real-time services.
+</p><p>
+</p><h3><a name="SECTION00072000000000000000">7.2 &nbsp;&nbsp;&nbsp;Grafting</a></h3>
+<p>
+Grafting in general deals with the problem of how to insert a graft into a server.
+We concentrate on the special situation when this server is the kernel.
+We do not address the software-technological advantages and limitations of
+the grafting model. Here, we are only interested whether downloading extensions
+into the kernel could perform better than executing them as a user-level server
+(or downloading them into a user-level server).
+</p><p>
+Grafts executing in kernel mode can reduce the number of user/kernel mode switches
+and address-space switches. However, they 
+either have to be completely trusted or need sand-boxing.
+</p><p>
+Various systems have been built on that basis. They range from very
+pragmatic co-location techniques [<a href="#abrossimov:chorus">1</a>, <a href="#mklinux">10</a>] that simply trust
+co-located code to more sophisticated techniques that confine the
+potential damage of kernel extensions.  
+However, Section&nbsp;<a href="#linuxperf">5</a> shows that simple co-location is not necessarily
+a promising technique. Co-located MkLinux performs worse
+than user-mode L<sup>4</sup>Linux.
+</p><p>
+Vino&nbsp;[<a href="#seltzer:vino">34</a>] introduces a sophisticated yet
+expensive transaction mechanism;  Exokernel&nbsp;[<a href="#engler:exo2">12</a>, <a href="#wallach:exo">36</a>] enables
+application-specific handlers using a variety of mechanisms ranging
+from interpretable intermediate code to run time checking.
+</p><p>
+SPIN&nbsp;[<a href="#ber:spin2">5</a>] is an example of a well-performing, sophisticated grafting
+technique. Its kernel extensions
+use compile-time sand-boxing as much as possible and thus avoid
+additional runtime sand-boxing overhead except for subscript checking. 
+Of the performance results published in [<a href="#ber:spin2">5</a>], the
+virtual memory benchmarks favor SPIN's approach 
+most. This makes sense,
+because for these tiny operations, the system-call and context-switching
+overhead counts heavily. Table&nbsp;<a href="#tabvops">5</a> shows equivalent benchmarks
+on L4, running in user-mode. The L4 times are between 2 and 4.7 times better 
+(geometric mean: 3.1) than the times published for SPIN&nbsp;[<a href="#ber:spin2">5</a>].
+However, due to the different hardware platforms (SPIN: 133 MHz Alpha 21064, 
+L4: 133MHz Pentium) this comparison must be interpreted very cautiously.
+Given that both processors are double-issue, use a large second-level cache
+and no byte operations are required for these examples (which are expensive on the Alpha),
+we think that the current implementations perform roughly comparably; perhaps
+L4 is slightly faster.
+</p><p>
+Currently, it is still an open question whether downloading grafts into the
+kernel can outperform the µ-kernel approach.
+</p><p>
+</p><h2><a name="SECTION00080000000000000000">8 &nbsp;&nbsp;&nbsp;Conclusions</a></h2>
+<p>
+The comparison of MkLinux and our Linux single-server approach on L4
+demonstrates that the performance improvements of second-generation
+µ-kernels significantly affect OS personalities and applications. We demonstrated
+that fast IPC and efficient mapping abstractions
+are more effective than
+techniques such as co-location.
+</p><p>
+The comparison of L<sup>4</sup>Linux and monolithic Linux shows that in a practical
+scenario, the penalty for using µ-kernels can be kept somewhere between
+5% and 10% for applications. When working on a workstation there is no
+visible difference whether the workstation is running native Linux or L<sup>4</sup>Linux.
+</p><p>
+Using a few simple experiments, we compared extensibility using libraries
+and servers to extensibility using kernel extension mechanisms. We found
+no indication that kernel extensions achieve better results.
+</p><p>
+The goal of this work has been to understand whether the
+L4 µ-kernel can provide a basis on which specialized
+applications, including those with real-time requirements, can be built
+such that they run along with normal operating systems and their 
+applications on a single machine. The results described in this paper encourage us to 
+pursue that line of development.
+</p><p>
+</p><h3><a name="SECTION00081000000000000000">Availability</a></h3>
+<p>
+L4 and L<sup>4</sup>Linux are available from the L<sup>4</sup>Linux Web site at
+<tt><a href="http://os.inf.tu-dresden.de/L4/LinuxOnL4/">http://os.inf.tu-dresden.de/L4/LinuxOnL4/</a></tt>.
+</p><p>
+</p><h3><a name="SECTION00082000000000000000">Acknowledgments</a></h3>
+<p>
+We would like to thank our shepherd John Wilkes and our
+anonymous reviewers for their valuable comments.  Robert Baumgartl,
+Martin Borriss, Peter Dickman, Kevin Elphinstone, Bryan Ford, Guerney Hunt, Nayeem
+Islam, Trent Jaeger, Frans Kaashoek, Orran Krieger, Sven Rudolph, Dan Sturman, and John Tracey
+provided helpful feedback and commentary on earlier versions of this
+paper.
+</p><p>
+Many thanks to AIM Technology for providing us with the AIM Multiuser
+Benchmark Suite VII.
+</p><p>
+</p><h2><a name="SECTIONREF">References</a></h2><p>
+</p><dl compact="compact">
+<dt><a name="abrossimov:chorus"><strong>1</strong></a>
+</dt><dd>V.&nbsp;Abrossimov, A.&nbsp;Demers, and C.&nbsp;Hauser.
+<a href="ftp://ftp.inria.fr/INRIA/Projects/SOR/GVM_12sosp89.ps.gz">Generic
+     virtual memory management for operating system kernels.</a>
+In <em>12th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 123-136, Lichfield Park, AZ, December 1989.
+<p>
+</p></dd><dt><a name="aimbench"><strong>2</strong></a>
+</dt><dd><a href="http://www.aim.com/">AIM Technology</a>.
+<em>AIM Multiuser Benchmark, Suite VII</em>, 1996.
+<p>
+</p></dd><dt><a name="appel/li"><strong>3</strong></a>
+</dt><dd>A.&nbsp;W. Appel and K.&nbsp;Li.
+<a href="http://www.cs.princeton.edu/fac/appel/papers/vmpup.ps">Virtual
+     memory primitives for user programs.</a>
+In <em>4th International Conference on Architectural Support for
+  Programming Languages and Operating Systems (ASPLOS)</em>, pages 73-80, Santa
+  Clara, CA, April 1991.
+<p>
+</p></dd><dt><a name="batlivala:unix"><strong>4</strong></a>
+</dt><dd>N.&nbsp;Batlivala, B.&nbsp;Gleeson, J.&nbsp;Hamrick, S&nbsp;Lurndal, D.&nbsp;Price, J.&nbsp;Soddy, and
+  V.&nbsp;Abrossimov.
+<a href="http://turing.scs.carleton.ca/%7Ecsgs/resources/chorus/CS-TR-92-50.ps">Experience with SVR4 over Chorus.</a>
+In <em>USENIX Workshop on Micro-Kernels and Other Kernel
+  Architectures</em>, pages 223-241, Seattle, WA, April 1992.
+<p>
+</p></dd><dt><a name="ber:spin2"><strong>5</strong></a>
+</dt><dd>B.&nbsp;N. Bershad, S.&nbsp;Savage, P.&nbsp;Pardyak, E.&nbsp;G. Sirer, M.&nbsp;Fiuczynski, D.&nbsp;Becker,
+  S.&nbsp;Eggers, and C.&nbsp;Chambers.
+<a href="http://www.cs.washington.edu/research/projects/spin/www/papers/SOSP95/sosp95.ps">Extensibility, safety and performance in the Spin operating system.</a>
+In <em>15th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 267-284, Copper Mountain Resort, CO, December 1995.
+<p>
+</p></dd><dt><a name="brown:hbench"><strong>6</strong></a>
+</dt><dd>A.&nbsp;B. Brown and M.&nbsp;I. Seltzer.
+<a href="http://www.eecs.harvard.edu/vino/perf/hbench/sigmetrics/hbench.html">Operating system benchmarking in the wake of lmbench: A case study of
+  the performance of NetBSD on the Intel x86 architecture.</a>
+In <em>ACM SIGMETRICS Conference on Measurement and Modeling of
+  Computer Systems</em>, pages 214-224, Seattle, WA, June 1997.
+<p>
+</p></dd><dt><a name="linux:kernel-changes"><strong>7</strong></a>
+</dt><dd>M.&nbsp;E. Chastain.
+<a href="ftp://ftp.shout.net/pub/users/mec/kcs/">Linux
+     kernel change summaries.</a>
+URL: <tt>ftp://ftp.shout.net/pub/users/mec/kcs/</tt>.
+<p>
+</p></dd><dt><a name="chen:memory"><strong>8</strong></a>
+</dt><dd>J.&nbsp;B. Chen and B.&nbsp;N. Bershad.
+<a href="http://www.eecs.harvard.edu/%7Ebchen/ftp/sospmem93.ps">The impact
+     of operating system structure on memory system performance.</a>
+In <em>14th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 120-133, Asheville, NC, December 1993.
+<p>
+</p></dd><dt><a name="condict:mkp"><strong>9</strong></a>
+</dt><dd>M.&nbsp;Condict, D.&nbsp;Bolinger, E.&nbsp;McManus, D.&nbsp;Mitchell, and S.&nbsp;Lewontin.
+<a href="http://www.osf.org/os/os.coll.papers/Vol3/RI_Symp_Paper.ps">Microkernel modularity with integrated kernel performance.</a>
+Technical report, OSF Research Institute, Cambridge, MA, April
+  1994.
+<p>
+</p></dd><dt><a name="mklinux"><strong>10</strong></a>
+</dt><dd>F.&nbsp;B. des Places, N.&nbsp;Stephen, and F.&nbsp;D. Reynolds.
+<a href="http://www.gr.osf.org/%7Estephen/fsf96.ps">Linux on the
+     OSF Mach3 microkernel.</a>
+In <em>Conference on Freely Distributable Software</em>, Boston, MA,
+  February 1996. Free Software Foundation, 59 Temple Place, Suite 330, Boston,
+  MA 02111.
+Available from URL: <tt>http://www.gr.osf.org/~stephen/fsf96.ps</tt>.
+<p>
+</p></dd><dt><a name="alpha21164"><strong>11</strong></a>
+</dt><dd>Digital Equipment Corp., Maynard, Massachusetts.
+<a href="http://ftp.digital.com/pub/Digital/info/semiconductor/literature/164hrm.ps"><em>Alpha 21164 Microprocessor Hardware Reference Manual</em></a>, July 96.
+<p>
+</p></dd><dt><a name="engler:exo2"><strong>12</strong></a>
+</dt><dd>D.&nbsp;Engler, M.&nbsp;F. Kaashoek, and J&nbsp;O'Toole.
+<a href="http://www.pdos.lcs.mit.edu/papers/exokernel-sosp95.ps">Exokernel,
+     an operating system architecture for application-level
+  resource management.</a>
+In <em>15th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 251-266, Copper Mountain Resort, CO, December 1995.
+<p>
+</p></dd><dt><a name="Rashid:90"><strong>13</strong></a>
+</dt><dd>D.&nbsp;Golub, R.&nbsp;Dean, A.&nbsp;Forin, and R.&nbsp;Rashid.
+<a href="ftp://mach.cs.cmu.edu/doc/published/mach3_intro.ps">Unix as an application program.</a>
+In <em>USENIX 1990 Summer Conference</em>, pages 87-95, June 1990.
+<p>
+</p></dd><dt><a name="heiser:impl-mungi"><strong>14</strong></a>
+</dt><dd>G.&nbsp;Heiser, K.&nbsp;Elphinstone, J.&nbsp;Vochteloo, S.&nbsp;Russell, and J.&nbsp;Liedtke.
+<a href="ftp://ftp.cse.unsw.edu.au/pub/doc/papers/UNSW/9704.ps.Z">Implementation and performance of the Mungi single-address-space
+  operating system.</a>
+UNSW-CSE-TR 9704, University of New South Wales, School of Computer
+  Science, Sydney 2052, Australia, June 1997.
+<p>
+</p></dd><dt><a name="helander94:lites"><strong>15</strong></a>
+</dt><dd>Johannes Helander.
+<a href="http://www.cs.hut.fi/%7Ejvh/lites.MASTERS.ps">Unix under Mach:
+     The Lites server.</a>
+Master's thesis, Helsinki University of Technology, 1994.
+Available from: <tt>http://www.cs.hut.fi/~jvh/lites.MASTERS.ps</tt>.
+<p>
+</p></dd><dt><a name="hildebrand:QNX"><strong>16</strong></a>
+</dt><dd>D.&nbsp;Hildebrand.
+<a href="ftp://ftp.vir.com/pub/qnx/papers/qnx-paper.ps.gz">An architectural
+     overview of QNX.</a>
+In <em>1st USENIX Workshop on Micro-kernels and Other Kernel
+  Architectures</em>, pages 113-126, Seattle, WA, April 1992.
+<p>
+</p></dd><dt><a name="hohmuth96:linuxif"><strong>17</strong></a>
+</dt><dd>M.&nbsp;Hohmuth.
+<a href="http://os.inf.tu-dresden.de/%7Ehohmuth/prj/linux-on-l4/"><em>Linux
+     Architecture-Specific Kernel Interfaces</em></a>.
+TU Dresden, March 1996.
+Available from URL: <tt>http://os.inf.tu-dresden.de/~hohmuth/prj/linux-on-l4/</tt>.
+<p>
+</p></dd><dt><a name="kaashoek:appl-perf"><strong>18</strong></a>
+</dt><dd>M.&nbsp;F. Kaashoek, D.&nbsp;R. Engler, G.&nbsp;R. Ganger, H.&nbsp;Briceno, R.&nbsp;Hunt, D.&nbsp;Mazieres,
+  T.&nbsp;Pinckney, R.&nbsp;Grimm, and T.&nbsp;Pinckney.
+<a href="http://www.pdos.lcs.mit.edu/papers/exo-sosp97.html">Application
+     performance and flexibility on exokernel systems.</a>
+In <em>16th ACM Symposium on Operating System Principles (SOSP)</em>,
+  Saint-Malo, France, October 1997.
+<p>
+</p></dd><dt><a name="Karshmer:1991:OSA"><strong>19</strong></a>
+</dt><dd>A.&nbsp;I. Karshmer and J.&nbsp;N. Thomas.
+Are operating systems at RISC?
+<em>Lecture Notes in Computer Science</em>, 563:48, 1991.
+<p>
+</p></dd><dt><a name="clans"><strong>20</strong></a>
+</dt><dd>J.&nbsp;Liedtke.
+Clans &amp; chiefs.
+In <em>12. GI/ITG-Fachtagung Architektur von Rechensystemen</em>, pages
+  294-305, Kiel, March 1992. Springer.
+<p>
+</p></dd><dt><a name="sosp"><strong>21</strong></a>
+</dt><dd>J.&nbsp;Liedtke.
+<a href="ftp://borneo.gmd.de/pub/rs/sosp-14.ps">Improving IPC by kernel design.</a>
+In <em>14th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 175-188, Asheville, NC, December 1993.
+<p>
+</p></dd><dt><a name="sosp2"><strong>22</strong></a>
+</dt><dd>J.&nbsp;Liedtke.
+<a href="http://borneo.gmd.de/RS/L4/sosp95.ps">On µ-kernel construction.</a>
+In <em>15th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 237-250, Copper Mountain Resort, CO, December 1995.
+<p>
+</p></dd><dt><a name="l4ref"><strong>23</strong></a>
+</dt><dd>J.&nbsp;Liedtke.
+<a href="ftp://borneo.gmd.de/pub/rs/L4/l4refx86.ps">L4 reference manual
+     (486, Pentium, PPro).</a>
+Arbeitspapiere der GMD No. 1021, GMD - German National Research
+  Center for Information Technology, Sankt Augustin, September 1996.
+Also Research Report RC 20549, IBM T. J. Watson Research Center,
+  Yorktown Heights, NY, Sep 1996; available from URL:
+  <tt>ftp://borneo.gmd.de/pub/rs/L4/l4refx86.ps</tt>.
+<p>
+</p></dd><dt><a name="towards"><strong>24</strong></a>
+</dt><dd>J.&nbsp;Liedtke.
+<a href="http://www.acm.org/pubs/citations/journals/cacm/1996-39-9/p70-liedtke/">Toward real µ-kernels.</a>
+<em>Communications of the ACM</em>, 39(9):70-77, September 1996.
+<p>
+</p></dd><dt><a name="ipcperf"><strong>25</strong></a>
+</dt><dd>J.&nbsp;Liedtke, K.&nbsp;Elphinstone, S.&nbsp;Schönberg, H.&nbsp;Härtig, G.&nbsp;Heiser, N.&nbsp;Islam,
+  and T.&nbsp;Jaeger.
+<a href="http://os.inf.tu-dresden.de/L4/hotos97.ps.gz">Achieved
+     IPC performance (still the foundation for extensibility).</a>
+In <em>6th Workshop on Hot Topics in Operating Systems (HotOS)</em>,
+  pages 28-31, Chatham (Cape Cod), MA, May 1997.
+<p>
+</p></dd><dt><a name="liedtke/haertig/hohmuth:pred"><strong>26</strong></a>
+</dt><dd>J.&nbsp;Liedtke, H.&nbsp;Härtig, and M.&nbsp;Hohmuth.
+<a href="http://os.inf.tu-dresden.de/papers_ps/rtas97.ps.gz">Predictable
+     caches in real-time systems.</a>
+In <em>Third IEEE Real-time Technology and Applications Symposium
+  (RTAS)</em>, pages 213-223, Montreal, Canada, June 1997.
+<p>
+</p></dd><dt><a name="linux"><strong>27</strong></a>
+</dt><dd><a href="http://www.linux.org/">Linux website</a>.
+URL: <tt>http://www.linux.org</tt>.
+<p>
+</p></dd><dt><a name="vm/370"><strong>28</strong></a>
+</dt><dd>R.&nbsp;A. Mayer and L.&nbsp;H. Seawright.
+A virtual machine time sharing system.
+<em>IBM Systems Journal</em>, 9(3):199-218, 1970.
+<p>
+</p></dd><dt><a name="lmbench"><strong>29</strong></a>
+</dt><dd>L.&nbsp;McVoy and C.&nbsp;Staelin.
+<a href="http://reality.sgi.com/lm_engr/lmbench/lmbench-usenix.ps">lmbench: Portable tools for performance analysis.</a>
+In <em>USENIX Annual Technical Conference</em>, pages 279-294, 1996.
+<p>
+</p></dd><dt><a name="scout"><strong>30</strong></a>
+</dt><dd>D.&nbsp;Mosberger and L.L. Peterson.
+<a href="ftp://ftp.cs.arizona.edu/xkernel/Papers/paths.ps">Making
+     paths explicit in the Scout operating system.</a>
+In <em>2nd USENIX Symposium on Operating Systems Design and
+  Implementation (OSDI)</em>, pages 153-167, Seattle, WA, October 1996.
+<p>
+</p></dd><dt><a name="pu:specialization"><strong>31</strong></a>
+</dt><dd>C.&nbsp;Pu, T.&nbsp;Autrey, A.&nbsp;Black, C.&nbsp;Consel, C.&nbsp;Cowan, J.&nbsp;Inouye, L.&nbsp;Kethana,
+  J.&nbsp;Walpole, and K.&nbsp;Zhang.
+<a href="ftp://cse.ogi.edu/pub/dsrg/synthetix/sosp95.ps.gz">Optimistic
+     incremental specialization: Streamlining a commercial
+  operating system.</a>
+In <em>15th ACM Symposium on Operating System Principles (SOSP)</em>,
+  pages 314-324, Copper Mountain Resort, CO, December 1995.
+<p>
+</p></dd><dt><a name="rozier:chorus"><strong>32</strong></a>
+</dt><dd>M.&nbsp;Rozier, A.&nbsp;Abrossimov, F.&nbsp;Armand, I.&nbsp;Boule, M.&nbsp;Gien, M.&nbsp;Guillemont,
+  F.&nbsp;Herrmann, C.&nbsp;Kaiser, S.&nbsp;Langlois, P.&nbsp;Leonard, and W.&nbsp;Neuhauser.
+CHORUS distributed operating system.
+<em>Computing Systems</em>, 1(4):305-370, 1988.
+<p>
+</p></dd><dt><a name="l4alpha"><strong>33</strong></a>
+</dt><dd>S.&nbsp;Schönberg.
+<a href="http://www.inf.tu-dresden.de/cgi-bin/cgiwrap/ss10/archive.cgi?file=diplom.ps">L4 on Alpha, design and implementation.</a>
+Technical Report CS-TR-407, University of Cambridge, 1996.
+<p>
+</p></dd><dt><a name="seltzer:vino"><strong>34</strong></a>
+</dt><dd>M.I. Seltzer, Y.&nbsp;Endo, C.&nbsp;Small, and K.A. Smith.
+<a href="http://www.eecs.harvard.edu/%7Evino/vino/osdi-96/paper.ps">Dealing
+     with disaster: Surviving misbehaved kernel extensions.</a>
+In <em>2nd USENIX Symposium on Operating Systems Design and
+  Implementation (OSDI)</em>, pages 213-227, Seattle, WA, October 1996.
+<p>
+</p></dd><dt><a name="shap:iwooos"><strong>35</strong></a>
+</dt><dd>J.&nbsp;Shapiro, D.&nbsp;Farber, and J.&nbsp;M. Smith.
+<a href="http://www.cis.upenn.edu/%7Eeros/devel/iwooos96-ipc.ps">The measured
+     performance of a fast local ipc.</a>
+In <em>5th International Workshop on Object Orientation in Operating
+  Systems (IWOOOS)</em>, pages 89-94, Seattle, WA, October 1996.
+<p>
+</p></dd><dt><a name="wallach:exo"><strong>36</strong></a>
+</dt><dd>D.&nbsp;A. Wallach.
+<a href="http://www.pdos.lcs.mit.edu/%7Ekerr/final-thesis.ps"><em>High Performance Application-Specific Networking</em>.</a>
+PhD thesis, MIT Laboratory, January 1997.
+</dd></dl>
+<p>
+<br> </p><hr>
+<address>
+&lt;l4-linux@os.inf.tu-dresden.de&gt;
+</address>
+<!-- hhmts start -->
+Last modified: Tue Sep 16 00:30:07 1997
+<!-- hhmts end -->
+</body></html>

@@ -1,0 +1,14 @@
+SMALL SPACES
+
+This uses the observation (something I didn't know) that the x86 segment
+registers allow you to do an early virtual->virtual mapping.  Thus, if you have
+a number of applications which all use fairly little memory, you can map them
+to non-overlapping (contiguous) ranges in the same address space, and use
+segment registers to control how application virtual addresses are mapped to
+the address space.  Thus, you can perform a context switch simply by changing
+the segment registers; you don't have to actually change the page table and
+flush the TLB.
+
+While this doesn't replace subcons, it is an interesting potential performance
+improvement for the x86 implementation of subcons.
+

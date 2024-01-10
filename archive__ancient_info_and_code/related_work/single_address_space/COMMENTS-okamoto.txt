@@ -1,0 +1,4 @@
+REGARDING "A Micro-Kernel Architecture for Next Generation Processor", Okamoto, et al.
+
+TODO: copy stuff in from the email that I sent myself
+

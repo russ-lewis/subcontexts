@@ -1,0 +1,34 @@
+PROBLEM:
+
+Linux needs to be able to look up the VMA given a certain virtual address.  How
+do we efficiently search the space of mapped subcontexts for the matching
+address?
+
+DETAILS:
+
+An example function is the inline function find_vma_intersection().  According
+to the comment, this function does:
+
+/* Look up the first VMA which intersects the interval start_addr..end_addr-1,
+   NULL if none.  Assume start_addr < end_addr. */
+static inline struct vm_area_struct * find_vma_intersection(struct mm_struct * mm, unsigned long start_addr, unsigned long end_addr)
+
+In subcontexts, if we search recursively from the current active subcontext,
+then we end up having to search the entire space of mapped subcontexts looking
+for a match on the address.  This is a huge number of VMAs to search.
+
+THINGS I TRIED:
+
+foo
+
+details............
+
+bar
+
+details............
+
+SOLUTION:
+
+Search first in the overlap_list to find the virtual memory address (if it
+exists).  Then search only that sc for the VMA we want, and return that.
+

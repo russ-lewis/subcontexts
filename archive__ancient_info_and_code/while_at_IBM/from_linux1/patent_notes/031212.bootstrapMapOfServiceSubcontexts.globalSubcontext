@@ -1,0 +1,78 @@
+PROBLEM:
+
+How do we initially map a service subcontext into another subcontext?  How do
+we do so in a way that allows the service subcontext (or some manager of it) to
+control permissions - that is, how do we control who gets what types of
+mappings?
+
+Also, how do we reduce the overhead of lots of mappings?  Assuming that all or
+most processes will map several (if not many) service subcontexts, how will we
+avoid having 1000s of duplicated mapping structures scattered throughout the
+system?
+
+DETAILS:
+
+Service subcontexts may want to give different amounts of permissions to
+different clients.  Some clients may have write access, while others might have
+only read (or none at all).  Some clients might have more (or different) entry
+points than others.  How do you control what mappings are given to which
+clients?
+
+THINGS I TRIED:
+
+Permission Maps
+
+At first, I thought about the standard UNIX permissions scheme.  Maybe we could
+have each service register certain entry points and mappings with different
+permission maps.  Userids (or something else) would then let us know if a
+subcontext had permissions to map something.
+
+But several problems arose.  First, it means that the kernel would have to
+manage some sort of namespace where these services and their mappings would be
+listed.  Would userids be flexible enough?  What if some service subcontext
+asked for a mapping on behalf of a one of its clients...would you use the
+userid of the requester, or the client?  Cleanup was also an issue...how would
+you know when it was time for a given subcontext to go away?  (Cleanup is
+covered in more detail in another note.)
+
+Callbacks
+
+Another thing I considered was for each service subcontext to register a
+callback which the kernel would call (on behalf of some other subcontext) when
+somebody asked for a mapping.  It was possible, but seemed a little clunky.
+How would the interface have enough flexibility to cover all parameters that
+the client might have to pass to the server?
+
+SOLUTION:
+
+* Any subcontext A is allowed to give any other subcontext B a mapping or entry
+  point.  That is, A is allowed to declare that B now has a mapping to A, or
+  that B has an entry point into A.  B *cannot* reject this request.  (It's ok
+  that B cannot reject the request, since, if B never uses the mapping, it has
+  no impact on B.)
+* Any service subcontext is allowed to register mappings or entry points into
+  the "global subcontext."  All subcontexts (including current and future
+  processes) are immediately given those mappings as though the service had
+  explicitly mapped each subcontext.
+* Service subcontexts will map entry points into themselves which other
+  subcontexts can call directly (like the Callbacks solution above).  However,
+  subcontexts will do so through the global subcontext and without any special
+  support from the kernel.  Subcontexts will be responsible for making their
+  decisions at runtime which clients may receive which mappings and entry
+  points.
+* Service subcontexts will register these entry points into a database of some
+  sort, but this database is not managed by the kernel.  Clients will look up
+  services in the database and call the global entry point in order to request
+  access to the service.  Once the service authenticates the client, it will
+  create mappings and entry points from the client into the service.
+* Generally (there will probably be a few exceptions), a subcontext cannot
+  define mappings or entry points into any other subcontext; each must do it on
+  their own.
+
+Idea: Perhaps a subcontext should be allowed to "pass along" a mapping or entry
+point into some other subcontext...provided that it already has at least as
+many permissions as it is passing along?  This is, of course, already possible
+through subcontext inheritance...why not make it explicit through the mapping
+functions as well?  This might help solve the issue of how you implement a
+subcontext which manages another subcontext...
+

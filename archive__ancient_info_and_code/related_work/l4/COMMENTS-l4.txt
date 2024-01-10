@@ -1,0 +1,13 @@
+L4
+
+L4 is another microkernel with very, very trivial interfaces.  It is designed
+to have portable interfaces, and as tiny as possible, based on the observation
+that existing microkernels were very architecture-specific and were also
+getting pretty large.
+
+Its basic memory system allows for "maps" of a page (a process gives another
+process revokable access to a page) and "grants" (a process irrevocably gives
+the other process the page, losing access to it at the same time).  Neither
+solves the problem of how you automatically and instantly share the pages of a
+component across multiple users.
+

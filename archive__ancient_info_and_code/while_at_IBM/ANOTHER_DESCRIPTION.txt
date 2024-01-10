@@ -1,0 +1,18 @@
+BACKGROUND THOUGHT: Subcontexts has 2 key innovations: the ability to share a
+synchronized memory image across two contexts, and the ability to protect one
+portion of an address space from another.
+
+"Subcontexts is a new way to organize and protect virtual memory that allows
+for contruction of heirarchal and/or virtual environments, nested to any depth
+even though all layers run in user space.  This is accomplished using two
+innovative features.  First, the memory map associated with a server in this
+heirarchy is guaranteed to be present in the address space of each of its
+various clients, and kept synchronized across them.  Second, asymetrical access
+rights to pages are used, such that code belonging to the client cannot access
+the memory belonging to the server (even though it is in the same address
+space), but code belonging to the server may have complete and direct access to
+the memory of the client.  The system is explicitly designed to allow for the
+construction of servers who interact with clients in much the same way as
+kernels would interact with their applications; yet in this invention, both the
+server and the client share the same user-mode address space."
+

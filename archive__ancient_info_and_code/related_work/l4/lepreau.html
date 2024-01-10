@@ -1,0 +1,2312 @@
+<html><head><title>Proceedings of the Third Symposium on Operating
+Systems Design and Implementation, February 22-25, 1999, New Orleans,
+Louisiana, USA</title><!-- IE understands topmargin, leftmargin, rightmargin, NS understands marginheight --></head><body topmargin="0" leftmargin="0" rightmargin="0" alink="#666666" bgcolor="#ffffff" link="#990000" marginheight="0" text="#000000" vlink="#666666">
+<!-- Banner -->
+<table bgcolor="#ffffff" border="0" cellpadding="0" cellspacing="0" width="100%">
+<tbody><tr><td align="left" valign="top"><table border="0" cellpadding="0" cellspacing="0" width="600"><tbody><tr><td>
+<table border="0" cellpadding="0" cellspacing="0" width="600">
+<!-- space at top -->
+<tbody><tr><td colspan="13"><img src="lepreau_files/dot_clear.gif" alt="" height="5" width="1"><br></td></tr>
+ <tr><!-- row 1 -->
+   <td colspan="13"><img src="lepreau_files/smalltop.gif" alt="" border="0" height="6" width="600"></td>
+  </tr>
+
+  <tr><!-- row 2 -->
+   <td rowspan="2"><img src="lepreau_files/smallleft.gif" alt="" border="0" height="23" width="102"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/"><img src="lepreau_files/smallhome.gif" alt="Home" border="0" height="16" width="38"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/divider16.gif" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/about"><img src="lepreau_files/smallabout.gif" alt="About USENIX" border="0" height="16" width="90"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/divider16.gif" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/events"><img src="lepreau_files/smallevents.gif" alt="Events" border="0" height="16" width="42"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/divider16.gif" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/membership"><img src="lepreau_files/smallmembership.gif" alt="Membership" border="0" height="16" width="78"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/divider16.gif" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/publications"><img src="lepreau_files/smallpublications.gif" alt="Publications" border="0" height="16" width="77"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/divider16.gif" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/students"><img src="lepreau_files/smallstudents.gif" alt="Students" border="0" height="16" width="54"></a></td>
+   <td bgcolor="#666666"><img src="lepreau_files/smallright16.gif" alt="" border="0" height="16" width="34"></td>
+  </tr>
+
+  <tr><!-- row 3 -->
+   <td colspan="12" bgcolor="#666666"><img src="lepreau_files/dot_clear.gif" alt="" border="0" height="7" width="2"></td>
+  </tr>
+
+</tbody></table>
+</td></tr></tbody></table></td></tr></tbody></table>
+<!-- End of Banner -->
+
+
+<table border="0" cellpadding="8" cellspacing="0" width="100%"><tbody><tr><td>
+
+
+<font color="#990000" face="verdana, arial, helvetica, sans-serif" size="+1"><b>USENIX Technical Program - Paper - Proceedings of the Third Symposium on Operating Systems Design and Implementation</b></font>&nbsp;&nbsp;&nbsp;
+<font face="verdana, arial, helvetica, sans-serif" size="-1">[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/technical.html">Technical Program</a>]</font>
+<p><table>
+<tbody><tr><td><b>Pp. 101&#8211;116 of the <i>Proceedings</i></b></td><td valign="top"><a href="http://www.usenix.org/publications/ordering/"><img src="lepreau_files/buy_now.gif" border="0"></a></td></tr>
+</tbody></table>
+<!-- START OF PAGE CONTENTS -->
+
+<!-- START OF PAGE CONTENTS -->
+
+</p><h1 align="center"><b>Interface and Execution Models in the Fluke Kernel<a href="#Footnote1"><img alt="[f1]" src="lepreau_files/footnote.gif" align="top"></a></b></h1>
+<h2 align="center">Bryan&nbsp;Ford&nbsp; 
+&nbsp;Mike&nbsp;Hibler&nbsp;
+&nbsp;Jay&nbsp;Lepreau&nbsp;
+&nbsp;Roland&nbsp;McGrath&nbsp;
+&nbsp;Patrick&nbsp;Tullmann</h2>
+<h3 align="center"><i>Department of Computer Science</i>, <i>University of Utah</i></h3>
+
+<p align="center">
+      <strong><a href="http://www.cs.utah.edu/projects/flux/">http://www.cs.utah.edu/projects/flux/</a></strong>
+</p>
+
+<h3>Abstract</h3>
+We have defined and implemented a kernel API
+that makes every exported operation
+fully interruptible and restartable, thereby
+appearing atomic to the user.  To achieve interruptibility, all
+possible kernel states in which a thread may become blocked for a ``long''
+time are represented as kernel system calls, without
+requiring the kernel to retain any unexposable internal state.
+<p>
+Since all kernel operations appear atomic, services such as
+transparent checkpointing and process migration that need access to
+the complete and consistent state of a process can be implemented by
+ordinary user-mode processes.
+Atomic operations also enable
+applications to provide reliability in a more straightforward manner.
+</p><p>
+This API also allows us to explore novel kernel implementation techniques and
+to evaluate existing techniques.
+The Fluke kernel's single source implements either the ``process'' or
+the ``interrupt'' execution model on both uniprocessors and multiprocessors,
+depending
+on a configuration option affecting a small amount of code.
+</p><p>
+We report preliminary measurements comparing 
+fully, partially and non-preemptible configurations
+of both process and interrupt model implementations.
+We find that the interrupt model has a modest performance advantage
+in some benchmarks,
+maximum preemption latency varies
+nearly three orders of magnitude, average preemption
+latency varies by a factor of six, and memory use
+favors the interrupt model as expected,
+but not by a large amount.
+We find that the overhead for
+restarting the most costly kernel operation ranges from 2-8% of the
+cost of the operation.
+
+</p><p>&nbsp;</p>
+<h1><a name="intro">1. Introduction</a></h1>
+<p>
+An essential issue of operating system design and implementation is when
+and how one thread can block and relinquish control to another, and how the
+state of a thread suspended by blocking or preemption is represented in the
+system.
+This crucially affects both the kernel interface
+that represents these states to user code, and
+the fundamental internal organization of the kernel implementation.
+A central aspect of this internal structure is
+the execution model in which the kernel
+handles in-kernel events such as
+processor traps, hardware interrupts, and system calls.
+In the <em>process model</em>,
+which is used by traditional monolithic kernels
+such as BSD, Linux, and Windows NT,
+each thread of control in the system has its own kernel stack--the
+complete state of a thread is implicitly encoded its stack.
+In the <em>interrupt model</em>,
+used by systems such as V&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#V">8</a>], QNX&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#QNX92">19</a>],
+and the exokernel implementations&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Englersosp15">13</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Kaashoeksosp16">22</a>], 
+the kernel uses only one kernel stack per <em>processor</em>--thus for typical uniprocessor configurations, only one kernel stack.
+A thread in a process-model kernel
+retains its kernel stack state when it sleeps,
+whereas in an interrupt-model kernel
+threads must explicitly save any important kernel state before sleeping, 
+since there is no stack implicitly encoding the state.
+This saved kernel state
+is often known as a <em>continuation</em>&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Continuations91">11</a>],
+since it allows the thread to ``continue'' where it left off.
+
+</p><p align="center">
+<a name="figmodels">
+<img alt="[Graph of execution model versus API model]" src="lepreau_files/models.gif" align="middle">
+</a> 
+</p>
+<blockquote>
+<strong>Figure 1:</strong> 
+	The kernel execution and API model continuums.
+	V was originally a pure interrupt-model kernel
+	but was later modified to be partly process-model;
+	Mach was a pure process-model kernel
+	later modified to be partly interrupt-model.
+	Fluke supports either execution model via compile time options.
+</blockquote>
+
+<p>
+In this paper we draw attention to
+the distinction between an interrupt-model <em>kernel implementation</em>--a kernel that uses only one kernel stack per processor, explicitly
+saving important kernel state before sleeping--and an ``atomic'' <em>kernel API</em>--a system call API designed to eliminate implicit kernel state.
+These two kernel properties are related but fall on orthogonal dimensions,
+as illustrated in 
+Figure&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#figmodels">1</a>. 
+In a purely atomic API,
+<em>all</em> possible states in which a thread may sleep
+for a noticeable amount of time
+are cleanly visible as a kernel entrypoint.
+For example, the state of a thread involved in any system call
+is always well-defined, complete,
+and immediately available for examination or modification by other threads;
+this is true even if the system call is long-running
+and consists of many stages.
+In general, this requires all system calls and exception handling mechanisms
+to be cleanly <em>interruptible</em> and <em>restartable</em>,
+in the same way that the instruction sets of modern processor architectures
+are cleanly interruptible and restartable.  For purposes of readability,
+in the rest of this paper we will refer to an API with these properties
+as ``atomic.'' 
+We use this term because, from the user's perspective, no thread is ever
+in the middle of any system call.
+</p><p>
+We have developed a kernel, Fluke&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Fordosdi96">16</a>],
+which exports a purely atomic API.
+This API allows the complete state of any user-mode thread
+to be examined and modified by other user-mode threads
+without being arbitrarily delayed.
+Supporting a purely atomic API
+slightly increases the width and complexity of the kernel interface
+but provides important benefits to user-level applications
+in terms of the power, flexibility, and predictability of system calls.
+</p><p>
+In addition,
+Fluke supports <em>both</em> the interrupt and process execution models
+through a
+build-time
+configuration option affecting only a small fraction of the source,  enabling
+a comparison between them.
+Fluke demonstrates that
+the two models are not necessarily as different
+as they have been considered to be in the past;
+however, they each have strengths and weaknesses.
+Some processor architectures inherently favor the process model
+and process model kernels are easier to make fully preemptible.
+Although full preemptibility comes at a cost, this cost is associated with preemptibility,
+not with the process model itself.
+Process model kernels use more per-thread kernel memory,
+but this is unlikely to be a problem in practice
+except for power-constrained systems.
+We show that
+while an atomic API is beneficial,
+the kernel's internal execution model is less important:
+an interrupt-based organization has a slight size advantage,
+whereas a process-based organization
+has somewhat more flexibility.
+</p><p>
+Finally, contrary to conventional wisdom,
+our kernel demonstrates that
+it is practical to use legacy process-model code
+even within interrupt-model kernels.
+The key is to run the legacy code in <em>user mode</em>
+but in the <em>kernel's address space</em>.
+</p><p>
+Our key contributions in this work are:
+(i)	To present a kernel supporting a pure atomic API
+	and demonstrate the advantages and drawbacks of this approach.
+(ii)	To explore the relationship between an ``atomic API''
+ 	and the kernel's execution model.
+(iii)	To present the first
+comparison
+	between the two kernel <em>implementation</em> models
+	using a kernel that supports both in pure form,
+	revealing that the models are not necessarily
+	as different as commonly believed.
+(iv)	To show that
+	it is practical to use process-model legacy code
+	in an interrupt-model kernel,
+	and to present several techniques for doing so.
+</p><p>
+The rest of the paper is organized as follows.
+In Section <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#related">2</a> we look at other systems, both in terms
+of the ``atomicity'' their API and in terms their
+execution models.
+In Section <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#procintr">3</a> we define the two models more
+precisely, and examine the implementation issues in each, looking at
+the strengths and weaknesses each model brings to a kernel.
+Fluke's atomic API is detailed in Section&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#apiproperties">4</a>.
+In the following
+section, we present six
+issues
+of importance to the execution model of a kernel, with
+measurements based on different configurations of the same kernel.
+The final section summarizes our analysis.
+</p><p>
+</p><p>&nbsp;</p>
+<h1> <a name="related">2. Related Work</a></h1>
+<p>
+Related work is grouped into kernels with atomic or near-atomic
+system call APIs
+and work related to kernel execution models.
+</p><p>
+</p><h2><a name="SECTION00021000000000000000">2.1. Atomic System Call API</a></h2>
+<p>
+The clean interruptibility and restartability of <em>instructions</em>
+is now recognized as a vital property of all modern processor architectures.
+However, this has not always been the case; as Hennessy and Patterson state:
+</p><blockquote> This last requirement is so difficult
+that computers are awarded the title <em>restartable</em>
+if they pass that test.
+That supercomputers and many early microprocessors
+do not earn that badge of honor
+illustrates both the difficulty of interrupts
+and the potential cost in hardware complexity
+and execution speed.&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#HennessyPattersonarch89">18</a>]
+</blockquote>
+Since kernel system calls appear to user-mode code essentially as an extension of the processor
+architecture, the OS clearly faces a similar challenge.  However,
+few operating systems have met this challenge nearly as thoroughly
+as processor architectures have.
+<p>
+For example, the Unix API&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#POSIX1">20</a>]
+distinguishes between ``short'' and ``long'' operations.
+``Short'' operations such as disk reads are made non-interruptible
+on the assumption that they will complete quickly enough
+that the delay will not be noticeable to the application,
+whereas ``long'' operations are interruptible
+but, if interrupted, must be restarted manually by the application.
+This distinction is arbitrary
+and has historically been the source of numerous practical problems.
+The case of disk reads from an NFS server that has gone down
+is a well-known instance of this problem:
+the arbitrarily long delays caused by the network
+makes it inappropriate to treat the read operation as ``short,''
+but on the other hand
+these operations cannot simply be changed to ``long'' and made interruptible
+because existing applications are not written
+with the expectation of having to restart file reads.
+</p><p>
+The Mach API&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Accetta86">1</a>] implements I/O operations using IPC;
+each operation is divided into an RPC-style request and reply stage,
+and the API is designed so that the operation can be cleanly interrupted
+after the request has been sent but before the reply has been received.
+This design reduces but does not eliminate
+the number of situations in which threads can get stuck
+in states that are not cleanly interruptible and restartable.
+For example, a common remaining case
+is when a page fault occurs
+while the kernel is copying the IPC message
+into or out of the user's address space;
+the IPC operation cannot be cleanly interrupted and restarted at this point,
+but handling the page fault may involve arbitrary delays
+due to communication with other user-mode servers or even across a network.
+KeyKOS&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#KeyKOS92">6</a>] comes very close to solving this problem
+by limiting all IPC operations to transfer at most one page of data
+and performing this data transfer atomically;
+however, in certain corner-case situations
+it gains promptness by sacrificing correctness.<a href="#Footnote2"><img alt="[f2]" src="lepreau_files/footnote.gif" align="top"></a>
+Amoeba&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Sapeeds88">26</a>] allows one user-mode process
+(or <em>cluster</em> in Amoeba terminology)
+to ``freeze'' another process for debugging purposes,
+but processes cannot be frozen in certain situations
+such as while waiting for an acknowledgement from another network node.
+V&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#V">8</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Vref86">32</a>] allows one process
+to examine and modify the state of another,
+but the retrieved state is incomplete,
+and state modification is only allowed
+if the target process is awaiting an IPC reply
+from the modifying process.
+</p><p>
+In scheduler activations&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#SchedAct92">2</a>], user threads have
+no kernel state at all when they are neither running on a processor in
+user-mode, nor blocked in the kernel on a system call or page fault.
+However, threads blocked in system calls have complex state that is
+represented by a ``scheduler activation'' kernel object just as it would be
+by a kernel thread object; that state is not available to the user.
+</p><p>
+The Cache Kernel&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#CheritonDudaosdi94">9</a>] and the
+Aegis&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Englersosp15">13</a>] and Xok&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Kaashoeksosp16">22</a>] exokernels
+implement atomic kernel interfaces
+by restricting the kernel API to managing extremely low-level abstractions
+so that none of the kernel system calls ever have any reason to block,
+and therefore they avoid the need for handling restarts or interruptions.
+Although this is a perfectly reasonable and compelling design strategy,
+the somewhat higher-level Fluke API
+demonstrates that strict atomicity can be implemented
+even in the presence of more complex operations
+which are not inherently idempotent.
+</p><p>
+On the other side of the spectrum,
+the Incompatible Time Sharing (ITS) operating system&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#ITS15">12</a>],
+developed in the 1960s and 1970s at MIT for
+the DEC PDP-6 and PDP-10 computers,
+demonstrated the feasibility of implementing a fully atomic API
+at a much higher levels of abstraction than Fluke,
+implementing facilities such as
+process control, file systems, and networking.
+ITS
+allowed all system calls to be
+cleanly interrupted and restarted, representing all aspects of a suspended
+computation in the contents of a thread's user-mode registers: in fact,
+this property was a central principle of the system's design and
+substantial effort was made in the implementation to achieve it.
+An unpublished memo&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Bawdenpclsr9x">4</a>]
+describes the design and implementation in detail,
+though to our knowledge no formally published work has previously
+identified the benefits of an atomic API
+and explored the implementation issues.
+</p><p>
+There are several systems which use concepts similar to Fluke's atomic
+system call API in different areas of operating systems.
+Quicksilver&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#haskinmalachi88">17</a>]
+and Nonstop&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#bartlett81">3</a>]
+are transactional operating
+systems; in both of these systems, the kernel provides primitives for
+maintaining transactional semantics in a distributed system.
+In this way, transactional semantics are provided
+for high-level services such as file operations
+even though the basic kernel operations on which they are built may not be.
+The VINO&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Seltzerosdi96">29</a>]
+kernel uses transactions to maintain system integrity
+when executing untrusted software extensions downloaded into the kernel.
+These transactions make graft invocations appear atomic,
+even though invocations of the basic kernel API
+are not wrapped in transactions.
+</p><p>
+</p><h2><a name="SECTION00022000000000000000">2.2. Kernel Execution Models</a></h2>
+<p>
+Many existing kernels have been built
+using either the interrupt or the process model internally:
+for example, most Unix systems use the process model exclusively,
+whereas QNX&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#QNX92">19</a>], the Cache Kenrel, and the exokernels
+use the interrupt model exclusively.
+Other systems such as Firefly's Taos&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#McJonesSwart89">25</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#SchroederBurrows90">28</a>]
+were designed with a hybrid model
+where threads often give up their kernel stacks in particular situations
+but can retain them as needed to simplify the kernel's implementation.
+Minix&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Tanenbaum87">30</a>]
+used kernel threads to run process-model kernel activities
+such as device driver code,
+even though the kernel ``core'' used the interrupt model.
+The V kernel was originally organized around a pure interrupt model,
+but was later adapted by Carter&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#munin91">7</a>]
+to allow multiple kernel stacks while handling page faults.
+The Mach 3.0 kernel&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Accetta86">1</a>] was taken in the opposite direction:
+it was originally created in the process model,
+but Draves&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Dravesphd94">10</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Continuations91">11</a>]
+later adapted it to use a partial interrupt model
+by adding continuations in key locations in the kernel
+and by introducing a ``stack handoff'' mechanism.
+However, not all
+kernel stacks for suspended threads were eliminated.
+Draves et. al. also identified
+the optimization of <em>continuation recognition</em>, which exploits
+explicit continuations to recognize the computation a suspended thread will
+perform when resumed, and do part or all of that work by mutating the
+thread's state without transferring control to the suspended thread's
+context.
+Though it was used to good effect within the kernel,
+user-mode code could not take advantage of this optimization technique
+because the continuation information was not available to the user.
+In Fluke, the continuation is explicit in the user-mode thread state,
+giving the user a full, well-defined picture of the thread's state.
+</p><p>
+The ITS system used the process model of execution,
+each thread always having a private kernel stack that the kernel switched
+to and from for normal blocking and preemption.
+To ensure the API's atomicity guarantee, implementations of system calls
+were required to explicitly update the user register state to reflect
+partial completion of the operation, or to register special cleanup
+handlers to do so for a system call interrupted during a block.
+Once a system call blocked, an interruption would discard all context
+except the user registers,<a href="#Footnote3"><img alt="[f3]" src="lepreau_files/footnote.gif" align="top"></a>
+and run these special cleanup handlers.
+</p><p>
+The implementation burden of these requirements was eased
+by the policy that each user memory page touched by system call code
+was locked in core until the system call completed or was cleaned up and
+discarded.
+</p><p>
+We are not aware of any previous kernel
+that simultaneously supported both the ``pure'' interrupt model
+and the ``pure'' process model through a compile-time configuration option.
+</p><p>
+
+</p><p>&nbsp;</p>
+<h1><a name="procintr">3. The Interrupt and Process Models</a></h1>
+An essential feature of operating systems is managing many computations
+on a smaller number of processors, typically just one.
+Each computation is represented in the OS by a thread of control.
+When a thread is suspended either because it blocks awaiting some event or
+is preempted when the scheduler policy chooses another thread
+to run, the system must record the suspended thread's state so that it can
+continue operation later.
+The way an OS kernel represents the state
+of suspended threads is a fundamental aspect of its internal structure.
+<p>
+In the <em>process model</em>
+each thread of control in the system has its own kernel stack.
+When a thread makes a system call or is interrupted,
+the processor switches to the thread's assigned kernel stack
+and executes an appropriate
+handler
+in the kernel's address space.
+This handler may at times cause the thread to go to sleep
+waiting for some event, such as the completion of an I/O request;
+at these times the kernel may switch to a different thread
+having its own separate kernel stack state,
+and then switch back later when the first thread's wait condition is satisfied.
+The important point is that each thread retains its kernel stack state
+even while it is sleeping,
+and therefore has an implicit ``execution context''
+describing what operation it is currently performing.
+Threads may even hold kernel resources,
+such as locks or allocated memory regions,
+as part of this implicit state they retain while sleeping.
+</p><p>
+An <em>interrupt model</em> kernel, on the other hand,
+uses only one kernel stack per processor--for typical uniprocessor kernels, just one kernel stack.
+This stack only holds state related to the <em>currently running</em> thread;
+no state is stored for sleeping threads
+other than the state explicitly encoded in its thread control block
+or equivalent kernel data structure.
+Context switching from one thread to another involves
+``unwinding'' the kernel stack to the beginning
+and starting over with an empty stack to service the new thread.
+In practice, putting a thread to sleep often involves
+explicitly saving state relating to the thread's operation,
+such as information about the progress it has made in an I/O operation,
+in a <em>continuation</em> structure.
+This continuation information allows the thread
+to continue where it left off once it is again awakened.
+By saving the required portions of the thread's state, it
+essentially performs the function of the per-thread kernel stack
+in the process model but without the overhead of a full kernel stack.
+</p><p>
+</p><h2><a name="SECTION00031000000000000000">3.1. Kernel Structure vs. Kernel API</a></h2>
+<p>
+The internal thread handling model employed by the kernel is not the only 
+factor in choosing a kernel design.
+There tends to be a strong correlation between the kernel's execution model
+and the <em>kinds</em> of operations
+presented by the kernel to application code in the kernel's API.
+Interrupt-model kernels tend to export short, simple, atomic operations
+that don't require large, complicated continuations to be saved
+to keep track of a long running operation's kernel state.
+Process-model kernels tend to export longer operations with more stages
+because they are easy to implement given a separate per-thread stack
+and they allow the kernel to get more work done in one system call.
+There are exceptions, however; in particular, ITS used one
+small (40 word)
+stack per thread despite its provision of an atomic API.&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Bawdenpersonal98">5</a>]
+</p><p>
+Thus, in addition to the execution model of the kernel itself,
+a distinction can be drawn between an atomic API,
+in which kernel operations are designed to be short and simple
+so that the state associated with long-running activities
+can be maintained mostly by the application process itself,
+and a conventional API,
+in which operations tend to be longer and more complex
+and their state is maintained by the kernel invisibly to the application.
+This stylistic difference between kernel API designs
+is analogous to the ``CISC to RISC'' shift
+in processor architecture design,
+in which complex, powerful operations
+are broken into a series of simpler instructions
+with more state exposed through a wider register file.
+</p><p>
+Fluke
+exports a fully interruptible and restartable (``atomic'') API,
+in which there are no implicit thread states
+relevant to, but not visible and exportable to application code.
+Furthermore, Fluke's implementation can be configured
+at compile-time
+to use either execution model in its pure form
+(i.e., either exactly one stack per processor or exactly one stack per thread);
+to our knowledge it is the first kernel to do so.
+In fact, it is Fluke's atomic API
+that makes it relatively simple
+for the kernel to run using either organization:
+the difference in the kernel code for the two models
+amounts to only about two hundred assembly language instructions
+in the system call entry and exit code, and about fifty lines of C
+in the context switching, exception frame layout, and thread startup
+code.  
+This code deals almost exclusively with stack handling.
+</p><p>
+The configuration option to select between the two models
+has no impact on the functionality of the API.
+Note that the current implementation of Fluke is not highly optimized,
+and more extensive optimization
+would naturally tend to interfere with this configurability
+since many obvious optimizations
+depend on one execution model or the other:
+e.g., the process model implementation
+could avoid rolling back and restarting in certain cases,
+whereas the interrupt model implementation
+could avoid returning through layers of function calls
+by simply truncating the stack on context switches.
+However, similar optimizations generally apply in either case
+even though they may manifest differently depending on the model,
+so we believe that despite this caveat,
+Fluke still provides a valuable testbed for analyzing these models.
+The API and implementation model properties of the Fluke kernel
+and their relationships
+are discussed in detail
+in the following sections.
+</p><p>
+</p><p>&nbsp;</p>
+<h1><a name="apiproperties">4. Properties of an Atomic API</a></h1>
+<p>
+An atomic API provides four important and desirable properties:
+<em>prompt</em> and <em>correct</em> exportability of thread state,
+and full <em>interruptibility</em> and <em>restartability</em>
+of system calls and other kernel operations.
+To illustrate these basic properties,
+we will contrast the Fluke API with
+the more conventional APIs of
+the Mach and Unix kernels.
+</p><p>
+</p><h2><a name="SECTION00041000000000000000">4.1. Promptness and Correctness</a></h2>
+<p>
+The Fluke system call API supports the
+extraction, examination, and modification of the state of any thread
+by any other thread (assuming the requisite access checks are satisfied).
+The Fluke API requires the kernel to ensure that
+one thread always be able to manipulate the state of another thread in this way
+without being held up indefinitely
+as a result of the target thread's activities
+or its interactions with other threads in the system.
+Such state manipulation operations can be delayed in some cases,
+but only by activities internal to the kernel
+that do not depend on the promptness of other untrusted application threads;
+this is the API's <em>promptness</em> requirement.
+For example, if a thread is performing an RPC to a server
+and is waiting for the server's reply,
+its state must still be promptly accessible to other threads
+without delaying the operation until the reply is received.
+</p><p>
+In addition, the Fluke API requires that,
+if the state of an application thread is extracted at an arbitrary time
+by another
+application thread,
+and then the target thread is destroyed, re-created from scratch,
+and reinitialized with the previously extracted state,
+the new thread must behave indistinguishably from the original,
+as if it had never been touched in the first place.
+This is the API's <em>correctness</em> requirement.
+</p><p>
+Fulfilling only one of the promptness and correctness requirements
+is fairly easy for a kernel to do,
+but strictly satisfying both is more difficult.
+For example, if promptness is not a requirement,
+and the target thread is blocked in a system call,
+then thread manipulation operations on that target
+can simply be delayed until the system call is completed.
+This is the approach generally taken by debugging interfaces
+such as Unix's <tt>ptrace</tt> and <tt>/proc</tt>
+facilities&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#POSIX1">20</a>],
+for which promptness is not a primary concern--e.g., if users are unable to stop or debug a process
+because it is involved in a non-interruptible NFS read,
+they will either just wait for the read to complete
+or do something to cause it to complete sooner--such as rebooting the NFS server.
+</p><p>
+Similarly, if correctness is not an absolute requirement,
+then if one thread tries to extract the state of another
+thread at an inconvenient time,
+the kernel can simply return the target thread's ``last known'' state
+in hopes that it will be ``good enough.''
+This is the approach taken by the Mach 3.0 API,
+which provides a <tt>thread_abort</tt> system call
+to forcibly break a thread out of a system call
+in order to make its state accessible;
+this operation is guaranteed to be prompt,
+but in some cases may affect the state of the target thread
+so that it will not behave properly if it is ever resumed.
+To support process migration,
+the OSF later added a <tt>thread_abort_safely</tt> system call&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#mach3prin">27</a>]
+which provides correctness, but at the expense of promptness.
+</p><p>
+Prompt and correct state exportability
+are required to varying degrees in different situations.
+For process control or debugging,
+correctness is critical
+since the target thread's state must not be damaged or lost;
+promptness is not as vital
+since the debugger and target process are under the user's direct control,
+but a lack of promptness is often perceptible
+and causes confusion and annoyance to the user.
+For conservative garbage collectors
+which must check an application thread's stack and registers for pointers,
+correctness is not critical as long as
+the ``last-known'' register state of the target thread is available.
+Promptness, on the other hand, is important
+because without it the garbage collector could be blocked for an arbitrary
+length of time,
+causing resource shortages for other threads or even deadlock.
+User-level
+checkpointing, process migration, and similar services
+clearly require correctness,
+since without it the state of re-created threads may be invalid;
+promptness is also highly desirable and possibly critical
+if the risk of being unable to checkpoint or migrate an application
+for arbitrarily long periods of time is unacceptable.
+</p><p>
+Mission critical systems often employ an ``auditor'' daemon
+which periodically wakes up and tests each
+of the system's critical threads and data structures for integrity,
+which is clearly only possible if a correct snapshot
+of the system's state is available without unbounded delay.
+Common user-mode deadlock detection and recovery mechanisms
+similarly depend on examination of the state of other threads.
+In short, although real operating systems often get away with
+providing unpredictable or not-quite-correct thread control semantics,
+in general promptness and correctness are highly desirable properties.
+</p><p>
+</p><h2><a name="SECTION00042000000000000000">4.2. Atomicity and Interruptibility</a></h2>
+<p>
+One natural implication of the Fluke API's
+promptness and correctness requirements for thread control
+is that all system calls a thread may make
+must either appear completely <em>atomic</em>,
+or must be cleanly divisible into user-visible atomic stages.
+</p><p>
+An atomic system call is one that always completes ``instantaneously''
+as far as user code is concerned.
+If a thread's state is extracted by another thread
+while the target thread is engaged in an atomic system call,
+the kernel will either allow the system call to complete,
+or will transparently abort the system call
+and roll the target thread back to its original state
+just before the system call was started.
+(This contrasts with the Unix and Mach APIs, for example,
+where user code is responsible for restarting interrupted system calls.
+In Mach, the restart code is part of the Mach library that normally wraps
+kernel calls; but there are intermediate states in which system calls
+cannot be interrupted and restarted, as discussed below.)
+</p><p>
+Because of the promptness requirement,
+the Fluke kernel can only allow a system call to complete
+if the target thread is not waiting for any event
+produced by some other user-level activity;
+the system call must be currently running (i.e., on another processor)
+or it must be waiting on some kernel-internal condition
+that is guaranteed to be satisfied ``soon'' without any user-mode involvement.
+For example, a short, simple operation
+such as Fluke's equivalent of <tt>getpid</tt>
+will always be allowed to run to completion;
+whereas sleeping operations such as <tt>mutex_lock</tt>
+are interrupted and rolled back.
+</p><p>
+While many Fluke system calls can easily be made atomic in this way,
+others fundamentally require the presence of intermediate states.
+For example, there is an IPC system call
+that a thread can use to send a request message and then wait for a reply.
+Another thread may attempt to access the thread's state
+after the request has been sent but before the reply is received;
+if this happens, the request clearly cannot be ``un-sent''
+because it has probably already been seen by the server;
+however, the kernel can't wait for the reply either
+since the server may take arbitrarily long to reply.
+Mach addressed this scenario
+by allowing an IPC operation to be interrupted
+between the send (request) and receive (reply) operations,
+later restarting the receive operation from user mode.
+</p><p>
+A more subtle problem is 
+page faults that may occur while transferring IPC messages.
+Since Fluke IPC does not arbitrarily limit the size of IPC messages,
+faulting IPC operations cannot simply be rolled back to the beginning.
+Additionally, 
+the kernel cannot hold off all accesses to the faulting thread's state,
+since page faults may be handled by user-mode servers.
+In Mach, a page fault during an IPC transfer can
+cause the system call to block 
+until the fault is satisfied (an arbitrarily long period).
+</p><p>
+Fluke's atomic API allows the kernel to update system call parameters in
+place in the user-mode registers to reflect the data transferred prior to
+the fault.
+Thus, while waiting for the fault to be satisfied
+both threads are left in the well-defined state of having
+transferred some data and about to start an IPC to transfer more.
+The API for Fluke system calls is directly analogous to the interface of
+machine instructions that operate on large ranges of memory, such
+as the block-move and string instructions on machines such as the
+Intel x86&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Intelpentium93">21</a>].
+The buffer addresses and sizes used by these instructions are stored in
+registers, and the instructions advance the values in these registers as
+they work.
+When the processor takes an interrupt or page fault during a string
+instruction, the parameter registers in the interrupted processor state
+have been updated to indicate the memory about to be operated on, and the
+program counter 
+remains at the faulting string instruction.  When the fault is resolved,
+simply jumping to that program counter
+with that register state resumes the string
+operation in the exact spot it left off.
+</p><p>
+
+</p><p>
+<a name="syscalls">
+<table align="center" border="1" cols="4" frame="box" rules="groups">
+      <colgroup><col align="left"></colgroup><colgroup><col align="left"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right">
+</colgroup><tbody>
+<tr>
+  <th align="left" nowrap="nowrap" valign="baseline">Type</th>
+  <th align="left" nowrap="nowrap" valign="baseline">Examples</th>
+  <th align="right" nowrap="nowrap" valign="baseline">Count</th>
+  <th align="right" nowrap="nowrap" valign="baseline"> Percent</th>
+</tr>
+</tbody>
+<tbody>
+<tr>
+  <td align="left" nowrap="nowrap" valign="baseline">Trivial</td>
+  <td align="left" nowrap="nowrap" valign="baseline"><tt>thread_self</tt></td>
+  <td align="right" nowrap="nowrap" valign="baseline">8</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 7% </td></tr>
+</tbody>
+<tbody>
+<tr>
+  <td align="left" nowrap="nowrap" valign="baseline">Short		</td>
+  <td align="left" nowrap="nowrap" valign="baseline"> <tt>mutex_trylock</tt>	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 68	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 64% </td></tr>
+</tbody>
+<tbody>
+<tr>
+  <td align="left" nowrap="nowrap" valign="baseline">Long		</td>
+  <td align="left" nowrap="nowrap" valign="baseline"> <tt>mutex_lock</tt>	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 8	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 7% </td>
+</tr></tbody>
+<tbody><tr>
+  <td align="left" nowrap="nowrap" valign="baseline">Multi-stage	</td>
+  <td align="left" nowrap="nowrap" valign="baseline"> <tt>cond_wait</tt>, IPC	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 23	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 22% </td>
+</tr></tbody>
+<tbody><tr>
+  <td align="left" nowrap="nowrap" valign="baseline">Total		</td>
+  <td align="left" nowrap="nowrap" valign="baseline">&nbsp;		</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 107	</td>
+  <td align="right" nowrap="nowrap" valign="baseline"> 100% </td></tr>
+</tbody>
+</table>
+</a>
+</p><blockquote>
+<strong>Table 1:</strong> 
+	Breakdown of the number and types of system calls in the Fluke API.
+	``Trivial'' system calls always run to completion.
+	``Short'' system calls usually run to completion immediately,
+	but may roll back.
+	``Long'' system calls can be expected to sleep indefinitely.
+	``Multi-stage'' system calls can be interrupted at
+        intermediate points in the operation.
+</blockquote>
+<p>
+
+Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#syscalls">1</a> breaks the Fluke system call API
+into four categories, based on the potential length of each system
+call.  ``Trivial'' system calls are those that will always run to
+completion without putting the thread to sleep.  For example, Fluke's
+<tt>thread_self</tt> (analogous to Unix's <tt>getpid</tt>) will always
+fetch the current thread's identifier without blocking.  ``Short''
+system calls usually run to completion immediately, but may encounter
+page faults or other exceptions during processing.  If an exception
+happens then the system call will roll back and restart.  ``Long''
+system calls are those that can be expected to sleep for an extended
+period of time (e.g., waiting on a condition variable).
+``Multi-stage'' system calls are those that can cause the calling
+thread to sleep indefinitely and can be interrupted at various
+intermediate points in the operation.
+</p><p>
+Except for <tt>cond_wait</tt> and <tt>region_search</tt>--a system
+call which can be passed an arbitrarily
+large region of memory--all of the multi-stage calls in the Fluke API are IPC-related.
+Most of these calls simply represent different options and combinations
+of the basic send and receive primitives.
+Although all of these entrypoints could easily be rolled into one,
+as is done in Mach,
+the Fluke API's design gives preference to exporting
+several simple, narrow entrypoints with few parameters
+rather than one large, complex entrypoint with many parameters.
+This approach enables the kernel's critical paths to be streamlined
+by eliminating the need to test for various options.
+However, the issue of whether system call options
+are represented as additional parameters or as separate entrypoints
+is orthogonal to the issue of atomicity and interruptibility;
+the only difference is that
+if a multi-stage IPC operation in Fluke is interrupted,
+the kernel may occasionally modify the user-mode instruction pointer
+to refer to a different system call entrypoint
+in addition to updating the other user-mode registers
+to indicate the amount of data remaining to be transferred.
+</p><p>
+In&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Tullmanniwooos96">31</a>] we more fully discuss the consequences
+of providing an atomic API.
+In summary,
+the purely atomic API greatly facilitates the job of user-level
+checkpointers, process migrators, and distributed memory systems.
+The correct, prompt access to all relevant kernel state of any thread
+in a system makes user-level managers themselves correct and prompt.
+Additionally, the clean, uniform management of thread state
+in an atomic API
+frees the managers from having to detect and handle obscure corner cases.
+Finally, such an API simplifies the kernel itself
+and is fundamental to allowing the kernel implementation
+easily to use either the process or the interrupt model;
+this factor will be discussed in Section&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#executionmodel">5</a>.
+</p><p>
+
+<a name="tablecoreobjects">
+</a><table align="center" border="1" cols="2" frame="box" rules="groups">
+<colgroup><col align="left"></colgroup><colgroup><col align="justify">
+</colgroup><tbody><tr>
+  <th align="left" nowrap="nowrap" valign="baseline">Object</th>
+  <th align="left" valign="baseline">Description</th>
+</tr></tbody>
+<tbody><tr>
+<td align="left" nowrap="nowrap" valign="baseline">Mutex</td>
+<td align="left" valign="baseline">A kernel-supported mutex which is safe for sharing between processes. </td></tr>
+</tbody><tbody>
+<tr>
+<td align="left" nowrap="nowrap" valign="baseline">Cond		</td>
+<td align="left" valign="baseline"> A kernel-supported condition variable. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Mapping	</td>
+<td align="left" valign="baseline"> Encapsulates an imported region of memory;
+  		associated with a Space (destination) and Region (source). </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Region	</td>
+<td align="left" valign="baseline"> Encapsulates an exportable region of memory;
+  		associated with a Space. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Port		</td>
+<td align="left" valign="baseline"> Server-side endpoint of an IPC. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Portset	</td>
+<td align="left" valign="baseline"> A set of Ports on which a server thread waits. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Space		</td>
+<td align="left" valign="baseline"> Associates memory and threads. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Thread	</td>
+<td align="left" valign="baseline"> A thread of control, associated with a Space. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Reference	</td>
+<td align="left" valign="baseline"> A cross-process handle on a Mapping, Region, Port,
+  		Thread or Space. Most often used as a handle on a 
+                Port that is used for initiating client-side IPC. </td>
+</tr>
+</tbody>
+</table>
+
+</p><blockquote>
+<strong>Table 2:</strong> The primitive object types exported by the Fluke
+  kernel.
+</blockquote>
+<p>
+</p><h2><a name="SECTION00043000000000000000">4.3. Examples from Fluke</a></h2>
+<p>
+The Fluke kernel directly supports nine primitive object types,
+listed in Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#tablecoreobjects">2</a>.  All types
+support a common set of operations including create, destroy,
+``rename,'' ``point-a-reference-at,''
+``get_objstate,'' and ``set_objstate.''
+Obviously, each type
+also supports operations specific to its nature; for
+example, a Mutex supports lock and unlock operations
+(the complete API is documented in&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Flukedocs96">15</a>]).
+The majority
+of kernel operations are transparently restartable.  For example,
+<tt>port_reference</tt>, a ``short'' system call,
+takes a Port object and a Reference
+object and ``points'' the reference at the port.  If either object is
+not currently mapped into memory<a href="#Footnote4"><img alt="[f4]" src="lepreau_files/footnote.gif" align="top"></a>,
+a page fault IPC
+will be generated by the kernel after which the reference extraction
+will be restarted.
+In all such cases page faults are
+generated very early in the system call, so little work is thrown away
+and redone.
+</p><p>
+Simple operations that restart after an error are fairly
+uninteresting.  The more interesting ones are those that update their
+parameters, or even the system call entry point, to record partial success
+of the operation.  The simplest example of this is the
+<tt>cond_wait</tt> operation which atomically blocks on a
+condition variable, releasing the associated mutex, and, when the
+calling thread is woken, reacquires the mutex.  In Fluke, this
+operation is broken into two stages: the <tt>cond_wait</tt> portion and
+the <tt>mutex_lock</tt>.  To represent this, before a thread sleeps
+on the condition variable, the thread's user-mode instruction
+pointer is adjusted to point at the <tt>mutex_lock</tt> entry point, 
+and the mutex argument is put into the appropriate register for the
+new entrypoint. Thus, if
+the thread is interrupted or awoken it will 
+automatically retry the mutex lock and not the
+whole condition variable wait.
+</p><p>
+An example of a
+system call that updates its parameters is the
+<tt>ipc_client_send</tt> system call, which sends
+data on an already established IPC connection to a waiting server
+thread.
+The call might either be the result of an explicit invocation by user code,
+or its invocation could have been caused implicitly by the kernel
+due to the earlier interruption of a longer operation such as
+<tt>ipc_client_connect_send</tt>,
+which establishes a new IPC connection and then sends data across it.
+Regardless of how <tt>ipc_client_send</tt> was called,
+at the time of entry
+one well-defined processor register contains the number of words to transfer
+and another register contains the address of the data buffer.
+As the data are transferred,
+the pointer register is incremented and the word count register
+decremented to reflect the new start of the data to transfer and the
+new amount of data to send.  
+For example, if an IPC tries to send 8,192 bytes starting from address
+<tt>0x08001800</tt> and successfully transfers the first 6,144 bytes and
+then causes a page fault, the registers will be updated to reflect
+a 2,048 byte transfer starting at address <tt>0x08003000</tt>.  Thus,
+the system call can be cleanly restarted without redoing any
+transfers.  The IPC connection state itself is stored as part of the current
+thread's control block in the kernel
+so it is not passed as an explicit parameter,
+though that state too is cleanly exportable through a different mechanism.
+Interfaces of this type are relatively common in Fluke, and
+the majority of the IPC interfaces exploit both parameter and
+program counter manipulation.
+</p><p>
+</p><h2><a name="SECTION00044000000000000000">4.4. Disadvantages of an Atomic API</a></h2>
+<p>
+This discussion reveals several potential disadvantages
+of an atomic API:
+</p><ul>
+<li>	<b>Design effort required</b>:
+	The API must be carefully designed
+	so that all intermediate kernel states
+	in which a thread may have to wait indefinitely
+	can be represented in the explicit user-accessible thread state.
+	Although the Fluke API demonstrates that this can be done,
+	in our experience
+	it does take considerable effort.
+	As a simple example, consider the requirement that updatable
+	system call parameters be passed in registers.
+	If instead parameters were passed on the user-mode stack,
+	modifying one might cause a page fault--an
+	indefinite wait--potentially exposing
+	an inconsistent intermediate state.
+</li><li>	<b>API width</b>:
+	Additional system call entrypoints
+	(or additional options to existing system calls)
+	may be required
+	to represent these intermediate states,
+	effectively widening the kernel's API.
+	For example, in the Fluke API, there are
+	five system calls
+	that are rarely called directly from user-mode programs,
+	and are instead usually only used as ``restart points''
+	for interrupted kernel operations.
+	However, we have found in practice that
+	although these seldom-used entrypoints
+	are mandated by the fully-interruptible API design,
+	they are also directly useful to some applications;
+	there are no Fluke entrypoints whose purpose
+	is solely to provide a pure interrupt-model API.
+</li><li>	<b>Thread state size</b>:
+	Additional user-visible thread state may be required.
+	For example, in Fluke on the x86,
+	due to the shortage of processor registers,
+	two 32-bit ``pseudo-registers'' implemented by the kernel
+	are included in the user-visible thread state frame
+	to hold intermediate IPC state.
+	These pseudo-registers
+	add a little more complexity to the API,
+	but they never need to be accessed directly by user code
+	except when saving and restoring thread state,
+	so they do not in practice cause a performance burden.
+
+
+</li><li>	<b>Overhead from Restarting Operations</b>:
+	During some system calls, various events can cause the thread's
+	state to be rolled back, requiring a certain amount of
+	work to be re-done later.
+Our measurements, summarized in Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#restartcost">3</a>,
+	show this not to be a significant cost.
+	Application threads rarely access each other's state
+	(e.g., only during the occasional checkpoint or migration),
+	so although it is important for this to be possible,
+	it is not the common case.
+	The only other situation in which threads are rolled back
+	is when an exception such as a page fault occurs,
+	and in such cases,
+	the time required to handle the exception
+	invariably dwarfs the time spent
+	re-executing a small piece of system call code later.
+
+<p>
+<a name="restartcost">
+<table align="center" border="1" cols="3" frame="box" rules="groups">
+<colgroup><col align="justify">
+</colgroup><colgroup></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right">
+</colgroup><tbody>
+<tr>
+<th align="left" valign="baseline">Actual Cause of Exception </th>
+<th align="right" valign="baseline">Cost to Remedy</th>
+<th align="right" valign="baseline">Cost to Rollback </th>
+</tr></tbody>
+<tbody><tr>
+<td align="left" valign="baseline">Client-side soft page fault </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 18.9 </td>
+<td align="right" nowrap="nowrap" valign="baseline"> <i>none</i> </td></tr>
+</tbody><tbody>
+<tr><td align="left" valign="baseline">Client-side hard page fault </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 118.0 </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 2.2 </td></tr>
+</tbody><tbody>
+<tr><td align="left" valign="baseline">Server-side soft page fault </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 29.3 </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 2.5 </td></tr>
+</tbody><tbody>
+<tr><td align="left" valign="baseline">Server-side hard page fault </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 135.0 </td>
+<td align="right" nowrap="nowrap" valign="baseline"> 6.8 </td></tr>
+</tbody>
+</table>
+</a>
+</p><blockquote>
+<strong>Table 3:</strong> 
+Breakdown of restart costs in microseconds for possible
+kernel-internal exceptions during a reliable IPC transfer, the area of
+the kernel with the most internal synchronization (specifically,
+<tt>ipc_client_connect_send_over_receive</tt>).  ``Actual Cause''
+describes the reason the exception was raised: either a ``soft'' page
+fault (one for which the kernel can derive a page table entry based on
+an entry higher in the memory mapping hierarchy) or a ``hard'' page
+fault (requiring an RPC to a user-level memory manager) in either the
+client or server side of the IPC.  ``Cost to Rollback'' is roughly the
+amount of work thrown away and redone, while ``Cost to Remedy''
+approximates the amount of work needed to service the fault.  Results
+were obtained on a 200-Mhz Pentium Pro with the Fluke kernel
+configured using a process model without kernel thread preemption.
+</blockquote>
+
+</li><li>	<b>Architectural bias</b>:
+	Certain older processor architectures
+	make it impossible for the kernel
+	to provide correct and prompt state exportability,
+	because the processor itself does not do so.
+	For example, the Motorola 68020/030 saved state frame
+	includes some undocumented fields
+	whose contents must be kept unmodified by the kernel;
+	these fields cannot safely be made accessible and modifiable
+	by user-mode software,
+	and therefore a thread's state can never be fully exportable
+	when certain floating-point operations are in progress.
+	However, most other architectures, including the x86
+	and even other 68000-class processors, such as the 68040,
+	do not have this problem.
+</li></ul>
+<p>
+In practice, none of these disadvantages has caused us significant problems
+in comparison to the benefits of correct, prompt state exportability.
+</p><p>&nbsp;</p>
+<h1><a name="executionmodel">5. Kernel Execution Models</a></h1>
+<p>
+We now return to the issue of the execution model
+used in a kernel's <em>implementation</em>.
+While there is typically a strong correlation
+between a kernel's API and its internal execution model,
+in many ways these issues are independent.
+In this section we report
+our experiments with Fluke and, previously, with Mach,
+that demonstrate the following findings.
+</p><ul><li>	<b>Exported API</b>:
+	A process-model kernel
+	can easily implement either style of API,
+	but an interrupt-model kernel has a strong ``preference''
+	for an atomic API.
+</li><li>	<b>Preemptibility</b>:
+	It is easier to make a process-model kernel preemptible,
+	regardless of the API it exports;
+	however,
+	it is easy to make interrupt-model kernels partly preemptible
+	by adding preemption points.
+</li><li>	<b>Performance</b>:
+	Depending on the application running on the kernel,
+        either a process-model or interrupt-model kernel can be faster,
+	but not by much.  In terms of
+        preemption latency, an interrupt-model kernel can perform as well as
+        an equivalently configured process-model kernel, but a
+        fully-preemptible process-model kernel provides the lowest latency.
+</li><li>	<b>Memory use</b>:
+	Naturally, process-model kernels use more memory
+	because of the larger number of kernel stacks in the system;
+	on the other hand, the size of kernel stacks sometimes can
+	be reduced to minimize this disadvantage.
+</li><li>	<b>Architectural bias</b>:
+	Some CISC architectures that insist on providing
+	automatic stack handling, such as the x86,
+	are fundamentally biased towards the process model,
+	whereas most RISC architectures support both models equally well.
+</li><li>	<b>Legacy code</b>:
+	Since most existing, robust, easily available OS code,
+	such as device drivers and file systems,
+	is written for the process model,
+	it is easiest to use this legacy code in process-model kernels.
+	However, it is also possible to use this code in interrupt-model kernels
+	with a slight performance penalty.
+</li></ul>
+The following sections discuss these issues in detail
+and provide concrete measurement results where possible.
+<p>
+</p><h2><a name="SECTION00051000000000000000">5.1. Exported API</a></h2>
+<p>
+In kernels with medium-to-high level API's,
+one of the most common objections to the interrupt-based execution model
+is that it requires the kernel to maintain explicit continuations.
+Our observation is that
+continuations are not a fundamental property of an interrupt-model kernel,
+but instead are the symptom of the mismatch
+between the kernel's API and its implementation.
+In brief, an interrupt-model kernel only requires 
+continuations 
+when implementing a conventional API;
+when an interrupt-model kernel serves an atomic API,
+<em>explicit</em> user-visible register state of a thread
+acts as the ``continuation.''
+</p><p>
+<a name="machipcorig">
+<blockquote>
+<pre>msg_send_rcv(msg, option,
+             send_size, rcv_size, ...) 
+{
+        rc = msg_send(msg, option, 
+                      send_size, ...);
+
+        if (rc != SUCCESS)
+                return rc;
+
+        rc = msg_rcv(msg, option, rcv_size, ...);
+        return rc;
+}
+</pre>
+</blockquote>
+</a> 
+</p><blockquote>
+<strong>Figure 2:</strong> 
+	An example IPC send and receive path
+	in a process model kernel.
+	Any waiting or fault handling during the operation
+	must keep the kernel stack bound to the current thread.
+</blockquote>
+<p>
+</p><h3><a name="SECTION00051100000000000000">Continuations</a></h3>
+<p>
+To illustrate this difference,
+consider the IPC pseudocode fragments
+in Figures&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#machipcorig">2</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#machipccont">3</a>, and <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#flukeipc">4</a>.
+The first shows a very simplified version
+of a combined IPC message send-and-receive system call
+similar to the <tt>mach_msg_trap</tt> system call
+inside the original process-model Mach 3.0 kernel.
+The code first calls a subroutine to send a message;
+if that succeeds, it then calls a second routine to receive a message.
+If an error occurs in either stage, the entire operation is aborted
+and the system call finishes
+by passing a return code back to the user-mode caller.
+This structure implies that
+any exceptional conditions that occur along the IPC path
+that should not cause the operation to be completely aborted,
+such as the need to wait for an incoming message or service a page fault,
+must be handled completely within these subroutines
+by blocking the current thread while retaining its kernel stack.
+Once the <tt>msg_send_rcv</tt> call returns,
+the system call is complete.
+</p><p>
+
+<a name="machipccont">
+<blockquote><pre>msg_send_rcv(msg, option, 
+             send_size, rcv_size, ...) 
+{
+    rc = msg_send(msg, option, send_size, ...);
+
+    if (rc != SUCCESS)
+            return rc;
+
+    cur_thread-&gt;continuation.msg = msg;
+    cur_thread-&gt;continuation.option = option;
+    cur_thread-&gt;continuation.rcv_size = rcv_size;
+    ...
+
+    rc = msg_rcv(msg, option, rcv_size, ...,
+                 msg_rcv_continue);
+
+    return rc;
+}
+
+msg_rcv_continue(cur_thread) 
+{
+    msg = cur_thread-&gt;continuation.msg;
+    option = cur_thread-&gt;continuation.option;
+    rcv_size = cur_thread-&gt;continuation.rcv_size;
+    ...
+
+    rc = msg_rcv(msg, option, rcv_size, ...,
+                 msg_rcv_continue);
+
+    return rc;
+}
+</pre></blockquote>
+</a>
+</p><blockquote>
+<strong>Figure 3:</strong> 
+	Example interrupt model IPC send and receive path.
+	State defining the ``middle'' of the send-receive
+	is saved away by the kernel after <tt>msg_send</tt>
+	in the case that
+	the <tt>msg_rcv</tt> is interrupted.
+	Special code, <tt>msg_rcv_continue</tt>,
+        is needed to handle restart from a
+	continuation.
+</blockquote>
+
+Figure&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#machipccont">3</a> shows pseudocode for the same IPC path
+modified to use a partial interrupt-style execution environment,
+as was done by Draves in the Mach 3.0 continuations
+work&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Dravesphd94">10</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Continuations91">11</a>].
+The first stage of the operation, <tt>msg_send</tt>,
+is expected to retain the current kernel stack, as above;
+any page faults or other temporary conditions during this stage
+must be handled in process-model fashion, without discarding the stack.
+However, in the common case
+where the subsequent receive operation must wait for an incoming message,
+the <tt>msg_rcv</tt> function can discard the kernel stack while waiting.
+When the wait is satisfied or interrupted, the thread will be given a new kernel stack
+and the <tt>msg_rcv_continue</tt> function will be called
+to finish processing the <tt>msg_send_rcv</tt> system call.
+The original parameters to the system call
+must be saved explicitly in a continuation structure in the current thread,
+since they are not retained on the kernel stack.
+<p>
+Note that although this modification
+partly changes the system call to have an interrupt model <em>implementation</em>,
+it still retains its conventional <em>API semantics</em>
+as seen by user code.
+For example, if another thread attempts to examine this thread's state
+while it is waiting continuation-style for an incoming message,
+the other thread will either have to wait until the system call is completed,
+or the system call will have to be aborted, causing loss of state.<a href="#Footnote5"><img alt="[f5]" src="lepreau_files/footnote.gif" align="top"></a>
+This is because the thread's continuation structure,
+including the continuation function pointer itself
+(pointing to <tt>msg_rcv_continue</tt>),
+is part of the thread's logical state but is inaccessible to user code.
+</p><p>
+<a name="flukeipc">
+</a></p><blockquote><pre><a name="flukeipc">msg_send_rcv(cur_thread) 
+{
+        rc = msg_send(cur_thread);
+
+        if (rc != SUCCESS)
+                return rc;
+
+        set_pc(cur_thread, msg_rcv_entry);
+
+        rc = msg_rcv(cur_thread);
+
+        if (rc != SUCCESS)
+                return rc;
+
+        return SUCCESS;
+}
+</a></pre></blockquote>
+
+<blockquote>
+<strong>Figure 4:</strong> 
+	Example IPC send and receive path for a kernel
+	exporting an atomic API.
+	The <tt>set_pc</tt> operation effectively serves the same purpose
+	as saving a continuation,
+	using the user-visible register state
+	as the storage area for the continuation.
+	Exposing this state to user mode as part of the API
+	provides the benefits of a purely atomic API
+	and eliminates much of the traditional complexity of continuations.
+	The kernel never needs to save
+	parameters or other continuation state on entry
+	because it is already in the thread's user-mode register state.
+</blockquote>
+<p></p><h3><a name="SECTION00051200000000000000">Interrupt-Model Kernels Without Continuations</a></h3>
+<p>
+Finally, contrast these two examples
+with corresponding code in the style used throughout the Fluke kernel,
+shown in Figure&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#flukeipc">4</a>.
+Although this code at first appears
+very similar to the code in Figure&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#machipcorig">2</a>,
+it has several fundamental differences.
+First,
+system call parameters are passed in registers
+rather than on the user stack.
+The system call entry and exit code
+saves the appropriate registers
+into the thread's control block in a standard format,
+where the kernel can read and update the parameters.
+Second, since the system call parameters
+are stored in the register save area of the thread's control block,
+no unique, per-system call continuation state is needed.
+Third, when an internal system call handler returns a nonzero result code,
+the system call exit layer does <em>not</em>
+simply complete the system call and pass this result code back to the user.
+Return values in the kernel
+are only used for <em>kernel-internal</em> exception processing;
+results intended to be seen by user code
+are returned by modifying the thread's saved user-mode register state.
+Finally,
+if the <tt>msg_send</tt> stage in <tt>msg_send_rcv</tt> completes successfully,
+the kernel updates the user-mode program counter
+to point to the user-mode system call entrypoint for <tt>msg_rcv</tt>
+before proceeding with the <tt>msg_rcv</tt> stage.
+Thus, if the <tt>msg_rcv</tt> must wait or encounters a page fault,
+it can simply return an appropriate (kernel-internal) result code.
+The thread's user-mode register state will be left so that
+when normal processing is eventually resumed,
+the <tt>msg_rcv</tt> system call will automatically be invoked
+with the appropriate parameters to finish the IPC operation.
+</p><p>
+The upshot of this is that in the Fluke kernel,
+the thread's explicit user-mode register state acts as the ``continuation,''
+allowing the kernel stack to be thrown away or reused by another thread
+if the system call must wait or handle an exception.
+Since a thread's user-mode register state is <em>explicit</em>
+and fully visible to user-mode code,
+it can be exported at any time to other threads,
+thereby providing the promptness and correctness properties
+required by the atomic API.
+Furthermore, this atomic API in turn
+simplifies the interrupt model kernel implementation
+to the point of being almost as simple and clear
+as the original process model code in Figure&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#machipcorig">2</a>.
+</p><p>
+</p><h2><a name="SECTION00052000000000000000">5.2. Preemptibility</a></h2>
+<p>
+Although the use of an atomic API
+greatly reduces the kernel complexity and the burden
+traditionally associated with interrupt-model kernels,
+there are other relevant factors as well,
+such as kernel preemptibility.
+Low preemption latency is a desirable kernel characteristic,
+and is critical in real-time systems
+and in microkernels such as L3&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Liedtkeiwooos93">23</a>]
+and VSTa&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Valenciaunpub96">33</a>]
+that dispatch hardware interrupts
+to device drivers running as ordinary threads
+(in which case preemption latency
+effectively becomes interrupt-handling latency).
+Since preemption can generally occur
+at any time while running in user mode,
+it is
+the kernel itself that causes
+preemption latencies that are greater than the hardware minimum.
+</p><p>
+In a process-model kernel that already supports multiprocessors,
+it is often relatively straightforward to make most of the kernel preemptible
+by changing spin locks into blocking locks (e.g., mutexes).
+Of course, a certain core component of the kernel,
+which implements scheduling and preemption itself,
+must still remain nonpreemptible.
+Implementing kernel preemptibility in this manner
+fundamentally relies on kernel stacks being retained by preempted threads,
+so it clearly would not work in a pure interrupt-model kernel.
+The Fluke kernel
+can be configured to 
+support this form of kernel preemptibility in the process model.
+</p><p>
+Even in an interrupt model kernel,
+important parts of the kernel can often be made preemptible
+as long as preemption is carefully controlled.
+For example, in microkernels that rely heavily on IPC,
+many long-running kernel operations tend to be IPCs
+that copy data from one process to another.
+It is relatively easy to 
+support partial preemptibility in a kernel by
+introducing <em>preemption points</em> in select locations, such as on the data copy path.
+Besides supporting full kernel preemptibility in the process model,
+the Fluke kernel also supports partial preemptibility
+in both execution models.
+QNX&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#QNX92">19</a>] is an example of another existing interrupt model kernel
+whose IPC path is made preemptible in this fashion.
+</p><p>
+</p><h2><a name="SECTION00053000000000000000">5.3. Performance</a></h2>
+<p>
+The Fluke kernel supports a variety of build-time configuration options
+that control the execution model of the kernel;
+by comparing different configurations of the same kernel,
+we can analyze the properties of these different execution models.
+We explore kernel configurations along two axes:
+interrupt versus process model and
+full versus partial (explicit preemption points) versus no 
+preemption.
+Since full kernel preemptibility requires the ability to block within the
+kernel and is therefore incompatible with the interrupt model,
+there are five possible configurations,
+summarized in Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#kernelconfigs">4</a>.
+</p><p>
+<a name="kernelconfigs">
+</a><table align="center" border="1" cols="2" frame="box" rules="groups">
+<colgroup><col align="left"></colgroup><colgroup><col align="justify">
+</colgroup><tbody>
+<tr>
+<th align="left" nowrap="nowrap" valign="baseline">Configuration	</th>
+<th align="left" valign="baseline"> Description </th>
+</tr>
+</tbody><tbody>
+<tr>
+<td align="left" nowrap="nowrap" valign="baseline">Process NP</td>
+<td align="left" valign="baseline"> Process model with no kernel preemption.
+		  Requires no kernel-internal locking.
+		  Comparable to a uniprocessor Unix system. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Process PP	</td>
+<td align="left" valign="baseline"> Process model with ``partial'' kernel preemption.
+		  A single explicit preemption point is added on the IPC
+		  data copy path, checked after every 8k of data is transferred.
+		  Requires no kernel locking. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Process FP	</td>
+<td align="left" valign="baseline"> Process model with full kernel preemption.
+		  Requires blocking mutex locks for kernel locking. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Interrupt NP	</td>
+<td align="left" valign="baseline"> Interrupt model with no kernel preemption.
+		  Requires no kernel locking. </td></tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Interrupt PP	</td>
+<td align="left" valign="baseline"> Interrupt model with partial preemption.
+		  Uses the same IPC preemption point as in Process PP.
+		  Requires no kernel locking. </td></tr>
+</tbody>
+</table>
+
+</p><blockquote>
+<strong>Table 4:</strong> 
+	Labels and characteristics for the different Fluke    kernel configurations
+        used in test results.
+</blockquote>
+<p>
+Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#preemptperf">5</a>
+shows the relative performance
+of three applications on the Fluke kernel
+under various kernel configurations.
+For each application,
+the execution times for all kernel configurations are normalized
+to the execution time of that application on the ``base'' configuration:
+process model with no kernel preemption.
+For calibration, the raw execution time is given for the base configuration.
+The non-fully-preemptible kernels were run
+both with and without partial preemption support on the IPC path.
+All tests were run on a 200MHz Pentium Pro PC with 256KB L2 cache
+and 64MB of memory.
+The applications measured are:
+</p><ul><li> <b>Flukeperf</b>:
+A series of tests to time various synchronization and IPC primitives.
+It performs a large number of kernel calls and context switches.</li><li> <b>Memtest</b>:
+Accesses 16MB of memory one byte at a time sequentially.
+Memtest runs under a memory manager which allocates memory on demand,
+exercising kernel fault handling and the exception IPC facility.</li><li> <b>Gcc</b>:
+Compile a single .c file.  This test include running the front end,
+the C preprocessor, C compiler, assembler and linker to produce a runnable
+Fluke binary.
+</li></ul>
+<p>
+<a name="preemptperf">
+</a><table align="center" border="1" cols="4" frame="box" rules="groups">
+<colgroup><col align="left"></colgroup><colgroup></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right">
+</colgroup><tbody>
+<tr>
+<th align="left" nowrap="nowrap" valign="baseline">Configuration      </th>
+<th align="right" nowrap="nowrap" valign="baseline">memtest  </th>
+<th align="right" nowrap="nowrap" valign="baseline">flukeperf  </th>
+<th align="right" nowrap="nowrap" valign="baseline">gcc  </th>
+</tr>
+</tbody><tbody>
+<tr>
+<td align="left" nowrap="nowrap" valign="baseline">Process NP</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 1.00  (2884<em>ms</em>)</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 1.00  (7120<em>ms</em>)</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 1.00  (7150<em>ms</em>)</td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Process PP   </td><td align="right" nowrap="nowrap" valign="baseline"> 1.00     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.01     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.03     </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Process FP   </td><td align="right" nowrap="nowrap" valign="baseline"> 1.11     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.20     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.05     </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Interrupt NP </td><td align="right" nowrap="nowrap" valign="baseline"> 1.00     </td><td align="right" nowrap="nowrap" valign="baseline"> 0.94     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.03     </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Interrupt PP </td><td align="right" nowrap="nowrap" valign="baseline"> 1.00     </td><td align="right" nowrap="nowrap" valign="baseline"> 0.94     </td><td align="right" nowrap="nowrap" valign="baseline"> 1.03     </td></tr>
+</tbody>
+</table>
+
+</p><blockquote>
+<strong>Table 5:</strong> 
+	Performance of three applications on various
+        configurations of Fluke      kernel.
+	Execution time is normalized to the performance
+	of the process-model kernel without kernel preemption
+	(Process NP) for which absolute times are also given.
+</blockquote>
+<p>
+As expected,
+performance of a fully-preemptible kernel is somewhat worse
+than the other configurations due to the need for kernel locking.
+The extent of the degradation varies from 20% for the kernel-intensive
+<em>flukeperf</em> test to only 5% for the more user-mode oriented <em>gcc</em>.
+Otherwise,
+the interrupt and process model kernels are nearly identical in performance
+except for the <em>flukeperf</em> case.
+In <em>flukeperf</em> we are seeing a positive effect of an interrupt model
+kernel implementation.  Since a thread will restart an operation after
+blocking rather than resuming from where it slept in the kernel, there
+is no need to save the thread's kernel-mode register state on a context
+switch.  In Fluke this translates to eliminating six 32-bit memory reads
+and writes on every context switch.
+</p><p>
+Because the applications shown are all single-threaded, the results in
+Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#preemptperf">5</a> do not
+realistically reflect the impact of preemption.
+To measure the effect of the execution model on preemption latency,
+we introduce a second, high-priority kernel thread which is scheduled
+every millisecond,
+and record its observed preemption latencies
+during a run of <em>flukeperf</em>.
+The <em>flukeperf</em> application is used because it performs a number of large, long
+running IPC operations ideal for inducing preemption latencies.
+</p><p>
+</p><p>
+<a name="preemptlatency">
+</a><table align="center" border="1" cols="5" frame="box" rules="groups">
+<colgroup><col align="left"></colgroup><colgroup></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right">
+</colgroup><tbody>
+<tr>
+<th align="left" nowrap="nowrap" valign="baseline">&nbsp;</th>
+<th colspan="4" align="center" nowrap="nowrap" valign="baseline"> flukeperf</th>
+</tr><tr>
+<th align="left" nowrap="nowrap" valign="baseline">&nbsp;</th>
+<th colspan="2" align="center" nowrap="nowrap" valign="baseline"> latency</th>
+<th colspan="2" align="center" nowrap="nowrap" valign="baseline"> schedules</th>
+</tr><tr>
+<th align="left" nowrap="nowrap" valign="baseline">Configuration&nbsp;&nbsp;</th>
+<th align="right" nowrap="nowrap" valign="baseline">&nbsp;&nbsp;avg  </th>
+<th align="right" nowrap="nowrap" valign="baseline">&nbsp;&nbsp;max  </th>
+<th align="right" nowrap="nowrap" valign="baseline">&nbsp;&nbsp;run  </th>
+<th align="right" nowrap="nowrap" valign="baseline">&nbsp;&nbsp;miss </th>
+</tr>
+</tbody><tbody>
+<tr><td align="left" nowrap="nowrap" valign="baseline">Process NP   </td><td align="right" nowrap="nowrap" valign="baseline"> 28.9 </td><td align="right" nowrap="nowrap" valign="baseline"> 7430 </td><td align="right" nowrap="nowrap" valign="baseline"> 7594 </td><td align="right" nowrap="nowrap" valign="baseline"> 132 </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Process PP   </td><td align="right" nowrap="nowrap" valign="baseline"> 18.0 </td><td align="right" nowrap="nowrap" valign="baseline"> 1200 </td><td align="right" nowrap="nowrap" valign="baseline"> 7805 </td><td align="right" nowrap="nowrap" valign="baseline"> 5   </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Process FP   </td><td align="right" nowrap="nowrap" valign="baseline"> 5.14 </td><td align="right" nowrap="nowrap" valign="baseline"> 19.6 </td><td align="right" nowrap="nowrap" valign="baseline"> 9212 </td><td align="right" nowrap="nowrap" valign="baseline"> 0   </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Interrupt NP </td><td align="right" nowrap="nowrap" valign="baseline"> 30.4 </td><td align="right" nowrap="nowrap" valign="baseline"> 7356 </td><td align="right" nowrap="nowrap" valign="baseline"> 7348 </td><td align="right" nowrap="nowrap" valign="baseline"> 141 </td></tr>
+<tr><td align="left" nowrap="nowrap" valign="baseline">  
+Interrupt PP </td><td align="right" nowrap="nowrap" valign="baseline"> 18.7 </td><td align="right" nowrap="nowrap" valign="baseline"> 1272 </td><td align="right" nowrap="nowrap" valign="baseline"> 7531 </td><td align="right" nowrap="nowrap" valign="baseline"> 7   </td></tr>
+</tbody>
+</table>
+
+</p><blockquote>
+<strong>Table 6:</strong> 
+	Effect of execution model on preemption latency.
+	We measure the average and maximum time (microseconds) required
+	for a periodic high-priority kernel thread to start running
+	after being scheduled, while competing with lower-priority
+	application threads.  Also shown is the number of times
+	the kernel thread runs during the lifetime of the application
+	and the number of times it failed to complete before the
+	next scheduling interval.
+</blockquote>
+<p>
+Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#preemptlatency">6</a> summarizes the experiment.
+The first two columns are the average and maximum observed latency in
+microseconds.  The last two columns of the table show the number
+of times the high-priority kernel 
+thread ran over the course of the application and the number
+of times it could not be scheduled because it was still running or queued
+from the previous interval.  
+As expected, the fully-preemptible (FP) kernel permits much smaller and
+predictable latencies and allowed the high-priority thread to run without
+missing an event.
+The non-preemptible (NP) kernel configuration exhibits highly variable latency
+for both the process and interrupt model causing a large number of missed
+events.
+Though we implement only a single explicit preemption point on the
+IPC data copy path, the partial preemption (PP) configuration fares
+well on this benchmark.
+This result is not surprising given that the benchmark performs
+a number of large IPC operations,
+but it illustrates that a few well-placed preemption points
+can greatly reduce preemption latency
+in an otherwise nonpreemptible kernel.
+</p><p>
+</p><h2><a name="SECTION00054000000000000000">5.4. Memory Use</a></h2>
+<p>
+One of the perceived benefits of the interrupt model
+is the memory saved by having only one kernel stack per processor
+rather than one per thread.
+For example, Mach's average per-thread kernel memory overhead
+was reduced by 85% when the kernel was changed
+to use a partial interrupt model&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Dravesphd94">10</a>, <a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Continuations91">11</a>].
+Of course, the overall memory used in a system for thread management overhead
+depends not only on whether each thread has its own kernel stack,
+but also on how big these kernel stacks are
+and how many threads are generally used in a realistic system.
+</p><p>
+<a name="memoryuse">
+</a><table align="center" border="1" cols="5" frame="box" rules="groups">
+<colgroup><col align="left"></colgroup><colgroup><col align="left"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right"></colgroup><colgroup><col align="right">
+</colgroup><tbody>
+<tr>
+<th align="left" nowrap="nowrap" valign="baseline">System</th>
+<th align="left" nowrap="nowrap" valign="baseline">Execution Model</th>
+<th align="right" nowrap="nowrap" valign="baseline">TCB Size	</th>
+<th align="right" nowrap="nowrap" valign="baseline">Stack Size</th>
+<th align="right" nowrap="nowrap" valign="baseline">Total Size</th>
+</tr>
+</tbody>
+<tbody>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">FreeBSD</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 2132	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 6700	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 8832	</td>
+</tr>
+</tbody><tbody>
+<tr bgcolor="#c0c0c0">
+<td align="left" nowrap="nowrap" valign="baseline">Linux	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 2395	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 4096	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 6491	</td>
+</tr>
+</tbody><tbody>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">Mach	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 452	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 4022	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 4474		</td></tr>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">   Mach	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Interrupt	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 690	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> --	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 690		</td></tr>
+</tbody><tbody>
+<tr bgcolor="#c0c0c0">
+<td align="left" nowrap="nowrap" valign="baseline">L3	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process </td>
+<td colspan="2" align="center" nowrap="nowrap" valign="baseline"> 1024</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 1024	</td></tr>
+</tbody><tbody>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">Fluke 	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process </td>
+<td colspan="2" align="center" nowrap="nowrap" valign="baseline"> 4096</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 4096	</td></tr>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">   Fluke   	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Process </td>
+<td colspan="2" align="center" nowrap="nowrap" valign="baseline"> 1024</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 1024	</td></tr>
+<tr bgcolor="#e0e0e0">
+<td align="left" nowrap="nowrap" valign="baseline">   Fluke     	</td>
+<td align="left" nowrap="nowrap" valign="baseline"> Interrupt	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 300	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> --	</td>
+<td align="right" nowrap="nowrap" valign="baseline"> 300		</td></tr>
+</tbody>
+</table>
+
+</p><blockquote>
+<strong>Table 7:</strong> 
+	Memory overhead in bytes due to thread/process management
+	in various existing systems and execution models.
+</blockquote>
+<p>
+To provide an idea of how these factors add up in practice,
+we show in Table&nbsp;<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#memoryuse">7</a> memory usage measurements
+gathered from a number of different systems and configurations.
+The Mach figures are as reported in&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Dravesphd94">10</a>]:
+the process-model numbers are from MK32,
+an earlier version of the Mach kernel,
+whereas the interrupt-model numbers are from MK40.
+The L3 figures are as reported in&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Liedtkeosr95">24</a>].
+For Fluke, we show three different rows:
+two for the process model using two different stack sizes,
+and one for the interrupt model.
+</p><p>
+The two process-model stack sizes for Fluke bear special attention.
+The smaller 1K stack size is sufficient
+only in the ``production'' kernel configuration
+which leaves out various kernel debugging features,
+and only when the device drivers do not run on these kernel stacks.
+(Fluke's device drivers were ``borrowed''&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Fordsosp16">14</a>] from legacy systems and require a 4K stack.)
+</p><p>
+To summarize these results,
+although it is true that interrupt-model kernels 
+most effectively minimize kernel thread memory use,
+at least for modest numbers of active threads,
+much of this reduction can also be achieved in process-model kernels
+simply by structuring the kernel to avoid excessive stack requirements.
+At least on the x86 architecture,
+as long as the thread management overhead is about 1K or less per thread,
+there appears to be no great difference between the two models
+for modest numbers of threads.
+However, real production systems may need larger stacks
+and also may want them to be a multiple of the page size
+in order to use a ``red zone.''
+These results should apply to other architectures,
+although the basic sizes may be scaled by an architecture-specific factor.
+For all but power-constrained systems, the memory differences
+are probably in the noise.
+</p><p>
+</p><h2><a name="SECTION00055000000000000000">5.5. Architectural Bias</a></h2>
+<p>
+Besides the more fundamental advantages and disadvantages
+of each model as discussed above,
+in some cases there are advantages to one model
+artificially caused by the design of the underlying processor architecture.
+In particular, traditional CISC architectures,
+such as the x86 and 680x0,
+tend to be biased somewhat toward the process model
+and make the kernel programmer jump through various hoops
+to write an interrupt-model kernel.
+With a few exceptions,
+more recent RISC architectures tend to be fairly unbiased,
+allowing either model to be implemented with equal ease and efficiency.
+</p><p>
+Unsurprisingly, the architectural property that causes this bias
+is the presence of automatic stack management and stack switching
+performed by the processor.
+For example, when the processor enters supervisor mode on the x86,
+it automatically loads the new supervisor-mode stack pointer,
+and then pushes the user-mode stack pointer,
+instruction pointer (program counter),
+and possibly several other registers onto this supervisor-mode stack.
+Thus, the processor automatically <em>assumes</em>
+that the kernel stack is associated with the current thread.
+To build an interrupt-model kernel on such a ``process-model architecture,''
+the kernel must either copy this data on kernel entry
+from the per-processor stack to the appropriate thread control block,
+or it must keep a separate, ``minimal'' process-model stack
+as part of each thread control block,
+where the processor automatically saves the thread's state on kernel entry
+before kernel code manually switches to the ``real'' kernel stack.
+Fluke in its interrupt-model configuration uses the former technique,
+while Mach uses the latter.
+</p><p>
+Most RISC processors, on the other hand,
+including the MIPS, PA-RISC, and PowerPC,
+use ``shadow registers'' for exception and interrupt handling
+rather than explicitly supporting stack switching in hardware.
+When an interrupt or exception occurs,
+the processor merely saves off the original user-mode registers
+in special one-of-a-kind shadow registers,
+and then disables further interrupts
+until they are explicitly re-enabled by software.
+If the OS wants to support nested exceptions or interrupts,
+it must then store these registers on the stack itself;
+it is generally just as easy for the OS
+to save them on a per-processor interrupt-model stack
+as it is to save them on a per-thread process-model stack.
+A notable exception among RISC processors
+is the SPARC, with its stack-based register window feature.
+</p><p>
+To examine the effect of architectural bias on the x86,
+we compared the performance of the interrupt and process-model Fluke kernels
+in otherwise completely equivalent configurations
+(using no kernel preemption).
+On a 100MHz Pentium CPU,
+the additional trap and system call overhead
+introduced in the interrupt-model kernel
+by moving the saved state
+from the kernel stack to the thread structure on entry,
+and back again on exit,
+amounts to about six cycles (60ns).
+In contrast, the minimal hardware-mandated cost
+of entering and leaving supervisor mode
+is about 70 cycles on this processor.
+Therefore,
+even for the fastest possible system call
+the interrupt-model overhead is less than 10%,
+and for realistic system calls is in the noise.
+We conclude that although this architectural bias
+is a significant factor in terms of programming convenience,
+and may be important if it is necessary to ``squeeze every last cycle''
+out of a critical path,
+it is not a major performance concern in general.
+</p><p>
+</p><h2><a name="legacy">5.6. Legacy Code</a></h2>
+<p>
+One of the most important practical concerns
+with an interrupt-based kernel execution model
+is that it appears to be impossible to use pre-existing legacy code,
+borrowed from process-model systems such as BSD or Linux,
+in an interrupt-model kernel, such as
+the exokernels
+and the CacheKernel.
+For example, especially on the x86 architecture,
+it is impractical for a small programming team
+to write device drivers for any significant fraction
+of the commonly available PC hardware;
+they must either borrow drivers from existing systems,
+or support only a bare minimum set of hardware configurations.
+The situation is similar, though not as severe,
+for other types of legacy code
+such as file systems or TCP/IP protocol stacks.
+</p><p>
+There are a number of approaches
+to incorporating process-model legacy code into interrupt-model kernels.
+For example, if kernel threads are available
+(threads that run in the kernel
+but are otherwise ordinary process-model threads),
+process-model code can be run on these threads when necessary.
+This is the method Minix&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Tanenbaum87">30</a>] uses to run device driver code.
+Unfortunately, kernel threads
+can be difficult to implement in interrupt-model kernels,
+and can introduce additional overhead on the kernel entry/exit paths,
+especially on architectures with the process-model bias discussed above.
+This is because such processors behave differently in a trap or interrupt
+depending on whether the interrupted code was in user or supervisor
+mode&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Intelpentium93">21</a>];
+therefore each trap or interrupt handler in the kernel
+must now determine whether the interrupted code
+was a user thread, a process-model kernel thread,
+or the interrupt-model ``core'' kernel itself,
+and react appropriately in each case.
+In addition, the process-model stacks of kernel threads on these architectures
+can't easily be pageable or dynamically growable,
+because the processor depends on always being able
+to push saved state onto the kernel stack if a trap occurs.
+Ironically, on RISC processors that have no bias towards the process model,
+it is much easier to implement process-model kernel threads
+in an interrupt-model kernel.
+</p><p>
+As an alternative to supporting kernel threads,
+the kernel can instead use only a <em>partial</em> interrupt model,
+in which kernel stacks are usually handed off
+to the next thread when a thread blocks,
+but can be retained while executing process-model code.
+This is the method that Mach with continuations&nbsp;[<a href="http://www.usenix.org/publications/library/proceedings/osdi99/full_papers/lepreau/lepreau_html/lepreau.html#Continuations91">11</a>] uses.
+Unfortunately, this approach brings with it
+a whole new set of complexities and inefficiencies,
+largely caused by the need to manage kernel stacks
+as first-class kernel objects
+independent of and separable from both threads and processors.
+</p><p>
+The Fluke kernel uses a different approach,
+which keeps the ``core'' interrupt-model kernel simple and uncluttered
+while effectively supporting something almost equivalent to kernel threads.
+Basically, the idea is to run process-model ``kernel'' threads
+in user mode but in the kernel's address space.
+In other words, these threads run
+in the processor's unprivileged execution mode,
+and thus run on their own process-model user stacks
+separate from the kernel's interrupt-model stack;
+however, the address translation hardware is set up
+so that while these threads are executing,
+their view of memory is effectively the same
+as it is for the ``core'' interrupt-model kernel itself.
+This design allows the core kernel to treat these process-level activities
+just like all other user-level activities running in separate address spaces,
+except that this particular address space is set up a bit differently.
+</p><p>
+There are three main issues with this approach.
+The first is that these user-level pseudo-kernel threads
+may need to perform <em>privileged operations</em> occasionally,
+for example to enable or disable interrupts or access device registers.
+In the x86 this isn't a problem
+because user-level threads can be given direct access to these facilities
+simply by setting some processor flag bits associated with those threads;
+however, on other architectures these operations
+may need to be ``exported'' from the core kernel as pseudo-system calls
+only available to these special pseudo-kernel threads.
+Second, these user-level activities
+may need to synchronize and share data structures with the core kernel
+to perform operations such as allocating kernel memory
+or installing interrupt handlers;
+since these threads are treated as normal user-mode threads,
+they are probably fully preemptible
+and do not share the same constrained execution environment
+or synchronization primitives as the core kernel uses.
+Again, a straightforward solution, which is what Fluke does,
+is to ``export'' the necessary facilities through a special system call
+that allows these special threads
+to temporarily jump into supervisor mode and the kernel's execution environment,
+perform some arbitrary (nonblocking) activity,
+and then return to user mode.
+The third issue
+is the <em>cost</em> of performing this extra mode switching;
+however, our experience indicates that this cost is negligible.
+Finally,
+note that the memory management hardware on some processors,
+particularly the MIPS architecture,
+does not support this technique;
+however, at least on MIPS
+there is no compelling need for it either
+because the processor does not have the traditional CISC-architecture bias
+toward a particular kernel stack management scheme.
+</p><p>
+</p><p>&nbsp;</p>
+<h1><a name="conclusion">6. Conclusion</a></h1>
+<p>
+In this paper,
+we have explored in depth
+the differences between the interrupt and process models
+and presented a number of ideas, insights, and results.
+Our Fluke kernel demonstrates that
+the need for the kernel to manually save state in <em>continuations</em>
+is not a fundamental property of the interrupt model,
+but instead is a symptom of a mismatch
+between the kernel's implementation and its API.
+Our kernel 
+exports a purely ``atomic'' API,
+in which all kernel operations are fully interruptible and restartable;
+this property has important benefits for
+fault-tolerance and for applications
+such as user-mode process migration, checkpointing, and garbage collection,
+and eliminates the need for interrupt-model kernels
+to manually save and restore continuations.
+Using our configurable kernel
+which supports both the interrupt-based and process-based execution models,
+we have made a
+controlled comparison
+between the two execution models.
+As expected, the interrupt-model kernel
+requires less per-thread memory.
+Although a null system call 
+entails a 5-10% higher overhead on an interrupt-model kernel
+due to a built-in bias toward the process model
+in common processor architectures such as the x86,
+the interrupt-model kernel
+exhibits a modest performance advantage in some cases.
+However, the interrupt model can incur vastly higher preemption latencies
+unless care is taken to insert explicit preemption points
+on critical kernel paths.
+Our conclusion is that
+it is highly desirable
+for a kernel to present an atomic API such as Fluke's,
+but that for the kernel's internal execution model,
+either implementation model is reasonable.
+</p><p>
+</p><h3><a name="SECTION00060100000000000000">Acknowledgements</a></h3>
+<p>
+
+We are grateful to Alan Bawden and Mootaz Elnozahy for interesting and
+enlightening discussion concerning these interface issues and their implications
+for reliability, to Kevin Van Maren for elucidating and writing up notes
+on other aspects of the kernel's execution model, to the anonymous reviewers,
+John Carter, and Dave Andersen for their extensive and helpful comments,
+to Linus Kamb for help with the use of certain system calls,
+to Eric Eide for last minute expert formatting help, 
+and to Bart Robinson for jump-starting the HTML conversion.
+
+</p><p>&nbsp;</p>
+<h2><a name="SECTIONREF">References</a></h2>
+<p>
+</p><dl compact="compact">
+<dt><a name="Accetta86"><strong>1</strong></a></dt><dd>
+M.&nbsp;Accetta, R.&nbsp;Baron, W.&nbsp;Bolosky, D.&nbsp;Golub, R.&nbsp;Rashid, A.&nbsp;Tevanian, and
+  M.&nbsp;Young.
+Mach: A new kernel foundation for UNIX development.
+In <em>Proc. of the Summer 1986 USENIX Conf.</em>, pages 93-112,
+  June 1986.
+<p>
+</p></dd><dt><a name="SchedAct92"><strong>2</strong></a></dt><dd>
+T.&nbsp;E. Anderson, B.&nbsp;N. Bershad, E.&nbsp;D. Lazowska, and H.&nbsp;M. Levy.
+Scheduler activations: Effective kernel support for the user-level
+  management of parallelism.
+<em>ACM Transactions on Computer Systems</em>, 10(1):53-79, Feb. 1992.
+<p>
+</p></dd><dt><a name="bartlett81"><strong>3</strong></a></dt><dd>
+J.&nbsp;F. Bartlett.
+A Non Stop kernel.
+In <em>Proc. of the 8th ACM Symposium on Operating Systems
+  Principles</em>, pages 22-29, Dec. 1981.
+<p>
+</p></dd><dt><a name="Bawdenpclsr9x"><strong>4</strong></a></dt><dd>
+A.&nbsp;Bawden.
+PCLSRing: Keeping process state modular.
+Unpublished report. <a href="ftp://ftp.ai.mit.edu/pub/alan/pclsr.memo">ftp://ftp.ai.mit.edu/pub/alan/pclsr.memo</a>,
+  1989.
+<p>
+</p></dd><dt><a name="Bawdenpersonal98"><strong>5</strong></a></dt><dd>
+A.&nbsp;Bawden.
+Personal communication, Aug. 1998.
+<p>
+</p></dd><dt><a name="KeyKOS92"><strong>6</strong></a></dt><dd>
+A.&nbsp;C. Bomberger and N.&nbsp;Hardy.
+The KeyKOS nanokernel architecture.
+In <em>Proc. of the USENIX Workshop on Micro-kernels and Other
+  Kernel Architectures</em>, pages 95-112, Apr. 1992.
+<p>
+</p></dd><dt><a name="munin91"><strong>7</strong></a></dt><dd>
+J.&nbsp;B. Carter, J.&nbsp;K. Bennett, and W.&nbsp;Zwaenepoel.
+Implementation and performance of Munin.
+In <em>Proc. of the 13th ACM Symp. on Operating Systems
+  Principles</em>, pages 152-164, Oct. 1991.
+<p>
+</p></dd><dt><a name="V"><strong>8</strong></a></dt><dd>
+D.&nbsp;R. Cheriton.
+The V distributed system.
+<em>Communications of the ACM</em>, 31(3):314-333, Mar. 1988.
+<p>
+</p></dd><dt><a name="CheritonDudaosdi94"><strong>9</strong></a></dt><dd>
+D.&nbsp;R. Cheriton and K.&nbsp;J. Duda.
+A caching model of operating system kernel functionality.
+In <em>Proc. of the First Symp. on Operating Systems Design and
+  Implementation</em>, pages 179-193. USENIX Assoc., Nov. 1994.
+<p>
+</p></dd><dt><a name="Dravesphd94"><strong>10</strong></a></dt><dd>
+R.&nbsp;P. Draves.
+<em>Control Transfer in Operating System Kernels</em>.
+PhD thesis, Carnegie Mellon University, May 1994.
+<p>
+</p></dd><dt><a name="Continuations91"><strong>11</strong></a></dt><dd>
+R.&nbsp;P. Draves, B.&nbsp;N. Bershad, R.&nbsp;F. Rashid, and R.&nbsp;W. Dean.
+Using continuations to implement thread management and communication
+  in operating systems.
+In <em>Proc. of the 13th ACM Symp. on Operating Systems
+  Principles</em>, Asilomar, CA, Oct. 1991.
+<p>
+</p></dd><dt><a name="ITS15"><strong>12</strong></a></dt><dd>
+D.&nbsp;Eastlake, R.&nbsp;Greenblatt, J.&nbsp;Holloway, T.&nbsp;Knight, and S.&nbsp;Nelson.
+Its 1.5 reference manual.
+Memo 161a, MIT AI Lab, July 1969.
+<p>
+</p></dd><dt><a name="Englersosp15"><strong>13</strong></a></dt><dd>
+D.&nbsp;R. Engler, M.&nbsp;F. Kaashoek, and J.&nbsp;O'Toole Jr.
+Exokernel: An operating system architecture for application-level
+  resource management.
+In <em>Proc. of the 15th ACM Symp. on Operating Systems
+  Principles</em>, pages 251-266, Dec. 1995.
+<p>
+</p></dd><dt><a name="Fordsosp16"><strong>14</strong></a></dt><dd>
+B.&nbsp;Ford, G.&nbsp;Back, G.&nbsp;Benson, J.&nbsp;Lepreau, A.&nbsp;Lin, and O.&nbsp;Shivers.
+The Flux OSKit: A substrate for OS and language research.
+In <em>Proc. of the 16th ACM Symp. on Operating Systems
+  Principles</em>, pages 38-51, St. Malo, France, Oct. 1997.
+<p>
+</p></dd><dt><a name="Flukedocs96"><strong>15</strong></a></dt><dd>
+B.&nbsp;Ford, M.&nbsp;Hibler, and Flux Project Members.
+Fluke: Flexible &#956;-kernel Environment (draft documents).
+University of Utah. Postscript and HTML available under
+  <a href="http://www.cs.utah.edu/projects/flux/fluke/">http://www.cs.utah.edu/projects/flux/fluke/</a>, 1996.
+<p>
+</p></dd><dt><a name="Fordosdi96"><strong>16</strong></a></dt><dd>
+B.&nbsp;Ford, M.&nbsp;Hibler, J.&nbsp;Lepreau, P.&nbsp;Tullmann, G.&nbsp;Back, and S.&nbsp;Clawson.
+Microkernels meet recursive virtual machines.
+In <em>Proc. of the Second Symp. on Operating Systems Design and
+  Implementation</em>, pages 137-151. USENIX Assoc., Oct. 1996.
+<p>
+</p></dd><dt><a name="haskinmalachi88"><strong>17</strong></a></dt><dd>
+R.&nbsp;Haskin, Y.&nbsp;Malachi, W.&nbsp;Sawdon, and G.&nbsp;Chan.
+Recovery management in QuickSilver.
+<em>ACM Transactions on Computer Systems</em>, 6(1):82-108, Feb.
+  1988.
+<p>
+</p></dd><dt><a name="HennessyPattersonarch89"><strong>18</strong></a></dt><dd>
+J.&nbsp;L. Hennessy and D.&nbsp;A. Patterson.
+<em>Computer Architecture: A Quantitative Approach</em>.
+Morgan Kaufmann, San Mateo, CA, 1989.
+<p>
+</p></dd><dt><a name="QNX92"><strong>19</strong></a></dt><dd>
+D.&nbsp;Hildebrand.
+An architectural overview of QNX.
+In <em>Proc. of the USENIX Workshop on Micro-kernels and Other
+  Kernel Architectures</em>, pages 113-126, Seattle, WA, Apr. 1992.
+<p>
+</p></dd><dt><a name="POSIX1"><strong>20</strong></a></dt><dd>
+Institute of Electrical and Electronics Engineers, Inc.
+<em>Information Technology -- Portable Operating System Interface
+  (POSIX) -- Part 1: System Application Program Interface (API) [C
+  Language]</em>, 1994.
+Std 1003.1-1990.
+<p>
+</p></dd><dt><a name="Intelpentium93"><strong>21</strong></a></dt><dd>
+Intel Corp.
+<em>Pentium Processor User's Manual</em>, volume&nbsp;3.
+Intel, 1993.
+<p>
+</p></dd><dt><a name="Kaashoeksosp16"><strong>22</strong></a></dt><dd>
+M.&nbsp;F. Kaashoek, D.&nbsp;R. Engler, G.&nbsp;R. Ganger, H.&nbsp;B. no, R.&nbsp;Hunt,
+  D.&nbsp;Mazières, T.&nbsp;Pinckney, R.&nbsp;Grimm, J.&nbsp;Janotti, and K.&nbsp;Mackenzie.
+Application performance and flexibility on exokernel systems.
+In <em>Proc. of the 16th ACM Symp. on Operating Systems
+  Principles</em>, pages 52-65, St. Malo, France, Oct. 1997.
+<p>
+</p></dd><dt><a name="Liedtkeiwooos93"><strong>23</strong></a></dt><dd>
+J.&nbsp;Liedtke.
+A persistent system in real use - experiences of the first 13 years.
+In <em>Proc. of the Third International Workshop on Object
+  Orientation in Operating Systems</em>, pages 2-11, Dec. 1993.
+<p>
+</p></dd><dt><a name="Liedtkeosr95"><strong>24</strong></a></dt><dd>
+J.&nbsp;Liedtke.
+A short note on small virtually-addressed control blocks.
+<em>Operating Systems Review</em>, 29(3):31-34, July 1995.
+<p>
+</p></dd><dt><a name="McJonesSwart89"><strong>25</strong></a></dt><dd>
+P.&nbsp;R. McJones and G.&nbsp;F. Swart.
+Evolving the UNIX system interface to support multithreaded
+  programs.
+In <em>Proceedings of the Winter 1989 USENIX Technical
+  Conference</em>, pages 393-404, San Diego, CA, Feb. 1989. USENIX.
+<p>
+</p></dd><dt><a name="Sapeeds88"><strong>26</strong></a></dt><dd>
+S.&nbsp;J. Mullender.
+Process management in a distributed operating system.
+In J.&nbsp;Nehmer, editor, <em>Experiences with Distributed Systems</em>,
+  volume 309 of <em>Lecture Notes in Computer Science</em>. Springer-Verlag, 1988.
+<p>
+</p></dd><dt><a name="mach3prin"><strong>27</strong></a></dt><dd>
+Open Software Foundation and Carnegie Mellon Univ.
+<em>OSF MACH Kernel Principles</em>, 1993.
+<p>
+</p></dd><dt><a name="SchroederBurrows90"><strong>28</strong></a></dt><dd>
+M.&nbsp;Schroeder and M.&nbsp;Burrows.
+Performance of Firefly RPC.
+<em>ACM Transactions on Computer Systems</em>, 8(1):1-17, Feb. 1990.
+<p>
+</p></dd><dt><a name="Seltzerosdi96"><strong>29</strong></a></dt><dd>
+M.&nbsp;I. Seltzer, Y.&nbsp;Endo, C.&nbsp;Small, and K.&nbsp;A. Smith.
+Dealing with disaster: Surviving misbehaved kernel extensions.
+In <em>Proc. of the Second Symp. on Operating Systems Design and
+  Implementation</em>, pages 213-227, Seattle, WA, Oct. 1996. USENIX Assoc.
+<p>
+</p></dd><dt><a name="Tanenbaum87"><strong>30</strong></a></dt><dd>
+A.&nbsp;S. Tanenbaum.
+<em>Operating Systems: Design and Implementation</em>.
+Prentice-Hall, Englewood Cliffs, NJ, 1987.
+<p>
+</p></dd><dt><a name="Tullmanniwooos96"><strong>31</strong></a></dt><dd>
+P.&nbsp;Tullmann, J.&nbsp;Lepreau, B.&nbsp;Ford, and M.&nbsp;Hibler.
+User-level checkpointing through exportable kernel state.
+In <em>Proc. Fifth International Workshop on Object Orientation in
+  Operating Systems</em>, pages 85-88, Seattle, WA, Oct. 1996. IEEE.
+<p>
+</p></dd><dt><a name="Vref86"><strong>32</strong></a></dt><dd>
+V-System Development Group.
+<em>V-System 6.0 Reference Manual</em>.
+Computer Systems Laboratory, Stanford University, May 1986.
+<p>
+</p></dd><dt><a name="Valenciaunpub96"><strong>33</strong></a></dt><dd>
+A.&nbsp;Valencia.
+An overview of the vsta microkernel.
+<a href="http://www.igcom.net/%7Ejeske/VSTa/vsta_intro.html">http://www.igcom.net/~jeske/VSTa/vsta_intro.html</a>.
+</dd></dl>
+
+<hr>
+
+<h2>Footnotes</h2>
+
+<dl> <dt><strong>1.</strong> <a name="Footnote1">...</a><p></p></dt><dd>
+This research was largely supported by the Defense Advanced Research
+Projects Agency, monitored by the Dept. of the Army under
+contract DABT63-94-C-0058, and the Air Force
+Research Laboratory, Rome Research Site, USAF, under agreement
+F30602-96-2-0269.
+<p>
+Contact information: <br>
+<a href="mailto:lepreau@cs.utah.edu">lepreau@cs.utah.edu</a> (Jay Lepreau)<br>
+Department of Computer Science <br>
+50 Central Campus Drive, Rm. 3190, University of Utah,  <br>
+Salt Lake Cit, UT 84112-9205. <br>
+<a href="http://www.cs.utah.edu/projects/flux/">http://www.cs.utah.edu/projects/flux/</a>.
+</p><p>
+</p><pre></pre>
+</dd><dt><strong>2.</strong> <a name="Footnote2">...correctness.</a></dt><dd>
+	If the client's data buffer into which an IPC reply is to be received
+	is paged out by a user-mode memory manager
+	at the time the reply is made,
+	the kernel simply discards the reply message
+	rather than allowing the operation to be delayed arbitrarily long
+	by a potentially uncooperative user-mode pager.
+	This usually was not a problem in practice
+	because most paging in the system is handled by the kernel,
+	which is trusted to service paging requests promptly.
+<p>
+</p><pre></pre></dd><dt><strong>3.</strong> <a name="Footnote3">...registers,</a></dt><dd>
+	Each ITS thread (or ``job'') also had a small set
+	of ``user variables'' that acted as extra ``pseudo-registers''
+	containing additional parameters for certain system calls.
+	Fluke uses a similar mechanism on the x86 because it has so few
+	registers.
+<p>
+</p><pre></pre></dd><dt><strong>4.</strong> <a name="Footnote4">...memory</a></dt><dd>
+	In Fluke, kernel objects are mapped into the address space
+	of an application with the virtual address serving as the
+	``handle'' and memory protections providing access control.
+<p>
+</p><pre></pre></dd><dt><strong>5.</strong> <a name="Footnote5">...state.</a></dt><dd>
+	In this particular situation in Mach,
+	the <tt>mach_msg_trap</tt> operation gets aborted
+	with a special return code;
+	standard library user-mode code can detect this situation and
+	manually restart the IPC.
+	However, there are many other situations,
+	such as page faults occurring along the IPC path while copying data,
+	which, if aborted, cannot be reliably restarted in this way.
+<p>
+</p><pre></pre> </dd></dl>
+<hr>
+<p>
+This document was generated using the
+<a href="http://www-dsed.llnl.gov/files/programs/unix/latex2html/manual/"><strong>LaTeX</strong>2<tt>HTML</tt></a>
+translator Version 96.1-c (Feb 29, 1996) Copyright © 1993, 1994,
+1995, 1996, 
+<a href="http://cbl.leeds.ac.uk/nikos/personal.html">Nikos Drakos</a>, 
+Computer Based Learning Unit, University of Leeds. <br>
+Then Patrick frobbed the sometimes ugly result into the glorious document before you.
+</p><p> 
+
+<!--
+The command line arguments were:
+latex2html -address "Utah Flux Research Group" -split 0 -link 0 fluke.tex. 
+The translation was initiated by Patrick A Tullmann on Wed Jan  6 23:03:46 MST 1999
+-->
+</p><p>
+</p><address>
+Utah Flux Research Group
+</address>
+
+<!-- END OF PAGE CONTENTS -->
+</td></tr>
+</tbody></table>
+<hr>
+<table align="left" border="0" cellpadding="0" cellspacing="0" width="100%">
+<tbody><tr><td valign="top" width="40%">
+<address>
+<font size="2">This paper was originally published in the
+Proceedings of the Third Symposium on Operating Systems Design and
+Implementation, February 22-25, 1999, New Orleans, Louisiana, USA
+</font><br>
+<!-- EDIT THE DATE AND YOUR LOGIN NAME BELOW -->
+<font size="2">Last changed: 26 Mar 2002 ml</font><br>
+</address>
+</td><td align="right" valign="top" width="60%">
+
+<!-- Upwards Navigation Table -->
+<table border="0" cellpadding="0" cellspacing="0">
+<tbody><tr><td>
+<a href="http://www.usenix.org/publications/library/proceedings/osdi99/technical.html"><img src="lepreau_files/blueball.gif" alt="" align="top" border="0" height="16" width="16"><font size="1">Technical Program</font></a><br>
+
+<a href="http://www.usenix.org/publications/library/proceedings/osdi99/index.html"><img src="lepreau_files/blueball.gif" alt="" align="top" border="0" height="16" width="16"><font size="1">Symposium Index</font></a><br>
+
+<a href="http://www.usenix.org/index.html"><img src="lepreau_files/blueball.gif" alt="" align="top" border="0" height="16" width="16"><font size="1">USENIX home</font></a><br>
+</td></tr></tbody></table>
+<!-- End of Upwards Navigation Table -->
+
+</td></tr></tbody></table>
+
+</body></html>

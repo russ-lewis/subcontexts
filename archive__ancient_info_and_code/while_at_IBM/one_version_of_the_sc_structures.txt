@@ -1,0 +1,226 @@
+struct mm_struct {
+	rw_sem sc_mm_lock;
+
+	sc_struct root_subcontext;
+}
+
+struct sc_struct {
+	rw_sem sc_lock;
+
+	sc_global_struct *global_sc;
+
+	sc_type local_type;
+	sc_type absolute_type;
+		// the local_type is the type of this subcontext in
+		// the context of this global sc.  absolute_type is
+		// the type of this subcontext in terms of the overall
+		// system.  If the global_sc's absolute type is
+		// SC_OVERLAPPED, then absolute_type is SC_OVERLAPPED
+		// even though the local_type might be SC_NONOVERLAPPED
+
+	list_head mappings;
+	list_head entry_points;
+
+	// these lists include both direct and indirect
+	// mappings and entry points.  Indirect ones will
+	// be part of lists (for the unmapping operation)
+	// while direct ones will not be.
+}
+
+struct sc_global_struct {
+	sc_struct *global_sc;
+	list_head overlap_list;
+
+	// parent global struct is global_sc->global_sc
+}
+
+struct sc_overlap_list_node {
+	list_head list_element;
+
+	vaddr start,end;
+	sc_type type;
+	uint use_count;
+	sc_struct *user;
+
+	// this has two modes:
+	// A: type = SC_NONOVERLAPPED
+	//    use_count = 1
+	//    user = <pointer>
+	// B: type = SC_OVERLAPPED
+	//    use_count >= 1
+	//    user = NULL
+}
+
+enum sc_type {
+	SC_OVERLAPPED,
+	SC_NONOVERLAPPED
+}
+
+// indirect mappings are not quite as trivial as one might think.
+// Each indirect mapping is the mixing of two other mappings.
+// There are two types of such mappings:
+//  A: Construct a r/w mapping out of a read mapping and a write mapping
+//  B: Construct a local mapping out of a mapping that some other subcontext
+//     has, plus your mapping to that subcontext.
+//
+// It should be obvious that there are a lot of possible ways that a given
+// subcontext might be constructed.  For instance, consider a subcontext (A)
+// which has two different mappings (one read, one write) to subcontext C;
+// there is another subcontext (B), which has a read/write mapping to A.
+// Now, B hits a page fault attempting to read C.  There are a number of
+// things that might happen.  The simplest would be that there would be an
+// indirect mapping would be defined, which is derived driectly from the
+// A->C(r) and B->A(rw) mappings.  However, it might happen that the
+// A->C(r) and A->C(w) mappings are first combined to make an indirect
+// A->C(rw) mapping.  Then, this indirect mapping could be combined with
+// B->A(rw) to make an indirect B->C(rw) mapping.
+//
+// I intentionally don't define what order or pattern in which these indirect
+// mappings are constructed.  I just let the indirect mappings be found
+// whenever they are needed.  When a new mapping is needed by any subcontext,
+// a simple search is conducted through the nest of mappings until either
+// the appropriate mapping is found or until the kernel can determine that
+// the mapping does not exist.
+//
+// During the search for mappings, the kernel will create indirect mappings
+// wherever it finds them.
+//
+// Each mapping struct has 3 list nodes.  The first is the head of the list
+// of mappings which are dependent on this mapping.  This list is empty if
+// there are no such mappings.  The other two are elements in such lists.
+// They are elements in the lists of two other mappings, which are the
+// mappings on which this mapping depends.  Of course, if this is a direct
+// mapping, then both of these should be empty lists.
+//
+// ORDERING THE LISTS
+//
+// We should really come up with some good way for sorting the lists.  I
+// haven't define that yet.  But an ordered list ensures that you don't
+// duplicate things.
+//
+// COMBINING READ/WRITE MAPPINGS
+//
+// If you have direct read/write mappings, should you record them as two
+// different mappings (with a combined read/write mapping being the third),
+// or should you record it as one mapping?  I would tend to think that the
+// latter would be better.  However, indirect mappings are harder; the two
+// mappings might come from different origins, and so not be something that
+// you can combine into a single one; you have to construct a compound
+// mapping.
+
+struct sc_mapping {
+	// this is the list node which holds us in the list of mappings
+	// for this certain subcontext.
+	list_head list_element;
+
+	bool direct;	// this is actually redundant info; you could
+			// figure this out by seeing if the element_of
+			// lists are empty or not.  But it is here for
+			// debugging, so that we can compare this param
+			// to those two lists and BUG_ON if things don't
+			// look right.
+
+	sc_struct *from;
+	sc_struct *to;
+	sc_mapping_type type;
+
+	list_head dependency_list;
+
+	// originally, this was just two list_head variables.  But, since
+	// we have no way to know whether a given element in a list would
+	// be the first or second of these, we had no way to get back to
+	// the sc_mapping struct.  Thus, each of these list elements has
+	// its own pointer to the sc_mapping struct.  Both of these pointers
+	// must point to this sc_mapping struct.
+	//
+	// These could be allocated separately, but I figure that if you're
+	// going to have to allocate and deallocate these anyhow, why not
+	// save a step and do it all at once.
+	//
+	// Ofc, direct mappings don't need to have these (and thus this
+	// struct wastes 24 bytes on every direct mapping).  I may split
+	// the direct and indirect mapping structs, I don't know.  For now,
+	// direct mappings just have these lists as empty lists.
+	struct sc_mapping_dependency_list_elem {
+		sc_mapping *mapping;
+		list_head list_elem;
+	} dependency_list_elem1,dependency_list_elem2;
+}
+
+enum sc_mapping_type {
+	SC_READ_MAPPING = 1,
+	SC_WRITE_MAPPING = 2,
+}
+
+
+
+
+
+
+
+void sc_remove_mapping_recursive(sc_mapping *mapping) {
+	// this is named _recursive, and it works recursively, but it is
+	// not actually a recursive function.  Implicit mappings can be
+	// built in trees to arbitrary depth; thus, a recursive function
+	// would be at risk of overflowing the stack.
+	//
+	// So, instead, we keep a list of mappings that we have left to
+	// remove, and simply work down the list.  Each time that we remove
+	// a mapping, we add that mappings dependency list to the end of the
+	// list of things to do.  Thus, we don't have to allocate any memory
+	// at all; we simply link the lists end-to-end, and iterate over
+	// them as we go.
+	//
+	// Each time that a mapping is deleted, both of its dependency list
+	// elements are deleted from their respective lists.  Practically
+	// by definition, the first element on our list is one of those.
+	// The other list element might also reside on the list at some
+	// later location, or it might not.  Either way, both of them are
+	// cleared out of whatever lists they are in.
+
+	if(!list_empty(mapping->dependency_list_elem1.list_elem)) {
+		list_del(mapping->dependency_list_elem1.list_elem);
+		list_del(mapping->dependency_list_elem2.list_elem);
+	}
+
+	sc_remove_mapping(mapping);
+
+	if(!list_empty(mapping->dependency_list) {
+		list_head mappings_left_to_unmap;
+		list_head *first_dependency;
+
+		INIT_LIST_HEAD(mappings_left_to_unmap);
+
+		first_dependency = mapping->dependency_list.next;
+		list_del(mapping->dependency_list);
+		list_append(mappings_left_to_unmap, first_dependency);
+
+		do {
+			sc_mapping *cur;
+
+			cur = list_entry(mappings_left_to_unmap.next,
+			                 sc_mapping_dependency_list_elem,
+			                 list_elem)->mapping;
+
+			list_del(cur->dependency_list_elem1.list_elem);
+			list_del(cur->dependency_list_elem2.list_elem);
+
+			sc_remove_mapping(cur);
+
+			if(!list_empty(cur->dependency_list)) {
+				list_head *first = cur->dependency_list.next;
+				list_del(cur->dependency_list);
+
+				// this is a breath-first search.  If you
+				// put the new list of things at the head
+				// of mappings_left_to_unmap, then it is
+				// a depth-first search
+				list_append(mappings_left_to_unmap, first);
+			}
+
+			vfree(cur);
+		} while(!list_empty(mappings_left_to_unmap));
+	}
+
+	vfree(mapping);
+}

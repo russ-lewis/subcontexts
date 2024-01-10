@@ -1,0 +1,40 @@
+Nook has some important similarities to subcontexts.  In particular, nook sets
+up multiple "Lightweight Kernel Protetion Domains," each of which has different
+access rights to kernel memory.  These are roughly analogous to subcontexts.
+
+However, subcontexts is more advanced in a number of ways:
+* Subcontexts is designed to be used by user-space applications, not just
+  kernel code.
+* Because of the above, subcontexts provides a rigorous, enforced protection
+  model.  My understanding is that nooks requires the device drivers to go
+  through "gates" where they voluntarily change their own permissions.
+* Subcontexts does not require explicit gates (although one could argue that
+  using page faults to detect inter-subcontext calls is essentially an implicit
+  gate mechanism).
+* Since nooks needs gates, it does not have any mechanism to prevent callers
+  from calling a function in the wrong place.
+* Nooks only disables write access to memory; it never disables read access to
+  memory.  This is unacceptible for user-space applications, since it would
+  enable an untrusted application to "snoop" another and perhaps read important
+  secrets (such as private ssh keys, for instance).
+
+Subcontexts also lack a few features of nooks:
+* Nooks include the concept of "shadow drivers" which are designed to allow a
+  device driver to recover quickly after a fault.  Subcontexts has no such
+  mechanism (although it would be conceivable to build one, I suppose).
+
+Philosophical differences:
+* About Nooks, they say: "...one can assume that most device drivers are
+  trustworthy: the problem is one of safety and not security, and absolute
+  safety may not even be needed." ("Nooks: An Architecture for Reliable Device
+  Drivers," Swift, Martin, Levy, Eggers)  Subcontexts, on the other hand,
+  expects that some of the subcontexts will contain untrusted code, and as such
+  absolute safety is a requirement at all times.
+* Subcontexts is binary backward compatible with old applications; nooks
+  requires a rebuild (especially since some kernel interfaces are in the form
+  of inlined functions).
+* Nooks attempt to detect and handle bugs within components themselves (such as
+  memory leaks, blocking while interrupts are disabled, and others).
+  Subcontexts, however, leaves each component isolated and trusted within its
+  own scope, and only controls the interaction between the components.
+

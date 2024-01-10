@@ -1,0 +1,3 @@
+"A Micro-Kernel Architecture for Next Generation Processor" - Okamoto, Segawa, et al.
+	Found at UA Sci&Engr Library QA76.9.A73 V84 1992
+

@@ -1,0 +1,5 @@
+The Parallel Global Address Space programming model has some analogies to
+subcontexts, because it assumes a single shared address space (like a service
+subcontext), accessible from multiple local spaces (like overlapped
+subcontexts).
+

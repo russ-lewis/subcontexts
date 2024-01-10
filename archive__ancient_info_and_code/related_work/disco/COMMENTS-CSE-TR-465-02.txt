@@ -1,0 +1,43 @@
+This may be the closest thing I've found to subcontexts, but it is not the
+same.  This paper documents two new features which accelerate userspace VMMs
+like UML.  It has two features:
+
+KTrace accelerates the ptrace() work that UML does so that we can move from a
+guest-app system call directly to the UML kernel with only a single context
+swtich.
+
+MMA has three features: 1) it uses the x86 segmentation model to deny guest
+apps access to the guest kernel's memory 2) it allows VMMs to run in ring 1
+(where they can access protected memory but not run protected instructions)
+3) it allows processes to have several page tables, and switch between them
+(rather than using mmap() and munmap(), as UML does).
+
+SIMILARITIES
+The system call intercept logic moves close to the entry point mechanism; in
+fact, it is a good mechanism for the system_call->entry_point redirect
+mechanism that I plan to implement for subcontexts UML.  More to the point,
+the high-level design looks very similar to how a cross-subcontext entry point
+is handled.
+
+The segmentation idea is interesting because it moves in the direction of the
+subcontexts mapping facility, especially as it is automatically triggered when
+there is a call into the kernel.
+
+DIFFERENCES
+The system they describe is much more limited than subcontexts.  First of all,
+not all of these advances can be implemented in a guest kernel, limiting their
+utility in a deeply nested environment.  For instance, there are only a limited
+number of rings, limiting the nesting.
+
+Second, they have the code continue to use ordinary system calls (which have to
+be redirected to the guest kernel) instead of the (IMHO) more general entry
+point function calls.
+
+Third, they continue to use the contiguous partitioning that UML uses, which
+limits the flexibility of the system (and which means that you can't have a
+single build of the virtualization layer nested within itself).
+
+Finally, their features are *only* useful for building a userland VMM...they
+are not able to implement the wide variety of other things that subcontexts
+can, like mutually untrusting applications.
+

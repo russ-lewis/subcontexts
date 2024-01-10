@@ -1,0 +1,12 @@
+This is something close to subcontexts.  It has the concept of "protection
+domains," which are something like subcontexts and something like conventional
+server applications in a microkernel.  Threads can call into other protection
+domains via "portals," which are equivalent to entry points.  Virtual memory
+pages may be copied from one protection domain to another as part of a call
+through a portal; this can be in the form of a mapping (which is unwound when
+the call returns), or a transfer of ownership.
+
+However, they still don't allow for direct access of the client's memory by the
+server.  This is a major feature that all microkernels that I've found have
+lacked.
+

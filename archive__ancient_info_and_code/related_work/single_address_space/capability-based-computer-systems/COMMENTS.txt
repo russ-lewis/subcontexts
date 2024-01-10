@@ -1,0 +1,33 @@
+Although some may argue that subcontexts are a form of capability architecture,
+they are so different that it is probably not helpful to think of them that
+way.
+
+SIMILARITIES TO CAPABILITY ARCHITECTURES
+* Different code elements in the same address space have different abilities to
+  perform tasks.
+* Permissions are absolute and cannot be forged.
+* Permissions can be inherited.
+* An identifier to a given resource (that is, a pointer) is valid (without any
+  translation) in all different components (in that context) and is globally
+  unique (again, within that context).
+* Pointers to addresses in non-overlapped contexts are truly globally valid and
+  globally unique.
+
+DIFFERENCES FROM CAPABILITY ARCHITECTURES
+* Subcontexts only protect memory access (rights to read/write data and to call
+  code).
+* If overlapped subcontexts are employed, then there is some overlap of virtual
+  addresses, meaning that those addresses are not globally unique and that some
+  resources cannot be accessed from all subcontexts.
+* Subcontexts does not affect the naming scheme (most capability architectures
+  move all objects into a single, unified namespace)
+* When you create a mapping A->B, it is not possible to give A only access to
+  some subset of B, nor to deny A access to things that B can access.  (This
+  can be approximated using tricky subcontext relationships, but they are very
+  nontrivial.)
+* Subcontexts does not define any way to serialize resources (beyond the normal
+  file system provided by the operating system).  So, unlike most capability
+  systems, the pointers are only globally unique during the lifetime when they
+  are mapped.  If the region is unmapped, then other resources could be mapped
+  to that location.
+

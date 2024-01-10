@@ -1,0 +1,45 @@
+Common operations (in decreasing order of importance):
+* Search for mapping (hit)
+  * No changes to data needed
+* Search for mapping (miss)
+  * Idempotent changes to data (multiple searches can find the same implicit mapping and that's ok)
+  * Ok to miss out on parallel changes of mappings
+    * But if a mapping is removed, then the implicit mappings must be cleaned up as well.
+* mmap
+  * Changes data
+  * Don't need to synchronize with any mapping changes
+    * Is this true?  What if you remove an explicit mapping just before mmap'ing?
+* munmap
+  * Changes data
+  * Need to synchronize with explicit & implicit mappings
+    * List of mappings gives a list of page tables to flush
+* Add explicit mapping
+  * Changes data
+  * Idempotent (assuming that it is in order with mapping removal)
+  * Need to synchronize with implicit mapping changes
+* Remove explicit mapping (sc has no pages)
+* Remove explicit mapping (sc has pages)
+* GC of sc
+
+
+
+
+SEARCH ALGORITHM
+----------------
+* Check to see if the mapping exists in either the main list (or the pending list) of the sc.  If so, then return OK.  NOTE: this makes the assumption that any other thread which is attempting to remove the mapping (or remove a mapping upon which this is dependent) will flush out the pending list before considering itself complete.
+* Check to see if there is any mapping src->X s.t. there is also a mapping X->trgt.  If so, then immediately generate the implicit mapping and add that to the list of pending actions.  Then return OK.
+* Check to see if there is any mapping X->trgt x.t. there is also a mapping src->X.  If so, then immediately generate the implicit mapping and add that to the list of pending actions.  Then return OK.
+* Maybe interweave (alternate?) the next two steps...
+  * For each mapping src->X (including implicit mappings) find all mappings X->Y and add an implicit mapping src->Y (unless there already is one).  (Add it to the list of pending actions.)  For each such mapping, see if there is a mapping Y->trgt, and if so immediately add the implicit mapping src->trgt to the list of pending actions and return OK.
+  * For each mapping X->trgt (including implicit mappings) find all mappings Y->X and add an implicit mapping Y->trgt (unless there already is one).  (Add it to the list of pending actions.)  For each such mapping, see if there is a mapping src->Y, and if so immediately add the implicit mapping src->trgt to the list of pending actions and return OK.
+* If no mapping found yet, then return NOT_FOUND
+
+
+
+....MMAP ALGORITHM not discussed here, because I can't find any thing interesting about it....
+
+
+
+MUNMAP ALGORITHM
+--------------
+* 

@@ -1,0 +1,16 @@
+Relevance to subcons:
+---------------------
+  - Discusses the desire for fast RPC
+  - Demonstrates that most calls are pass-by-value (mentioning in passing
+    that this is a *consequence* of the existing RPC designs)
+
+  - Uses marshalling stub
+  - *NOT* single-address-space
+
+  - Arguments passed on an "A-stack".
+    - Shared resource between caller, server
+    - *NOT* at same address in both
+    - *NOT* permanently mmap()ed in
+
+  - Still needs kernel to mediate the call
+

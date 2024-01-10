@@ -1,0 +1,238 @@
+SUMMARY
+
+I haven't found any system which solves the problem I am trying to solve: to
+figure out how to implement userspace operating system services in a way that
+is easy to use (both for the client and server), efficient, and
+backwards-compatible.
+
+WHAT I'VE LEARNED
+
+Reading through the various papers I found, I came upon "Are Virtual Machine
+Monitors Microkernels Done Right?" (Hand, Warfield, Fraser, Kotsovinos,
+Magenheimer), which argued that VMMs provide the same sorts of benefits (small
+trusted kernel, isolation, etc.) that microkernels have long provided, but they
+provide them in a way that encourages adoption, because the user-visible
+interfaces are the guest OSes, which users are already familiar with.  This
+argument made a lot of sense to me, and I think that I can make a similar
+argument for subcontexts ("subcons"):
+
+The primary advantage that subcons has over most other designs (the
+microkernels, and even Xen itself) is that they are backward compatible with
+existing systems.  You can run a legacy application in a subcons environment
+without any need for porting, recompiling, or wrappers.  You can even have a
+server subcon providing some system services to that application without the
+application needing to know.
+
+This means that subcons can be retrofit into any conventional operating system
+(and, indeed, they could be added to many of the microkernels I read about),
+and the users can gradually port software over to the new paradigm if and when
+it makes sense.  You can have a feature-rich monolithic kernel and still have
+subcons running under it; or, you can gradually move all the services out of
+the kernel and end up with a subcons microkernel.
+
+REVIEW OF KEY SUBCONS FEATURES
+
+* A "subcontext" is a (possibly empty) set of pages, with defined virtual
+  addresses and permissions, subject to the restriction that no pages can have
+  overlapping virtual addresses.  Anything that you can mmap() in a
+  conventional OS can be mapped into a subcontext.  The virtual addresses may
+  be discontiguous.
+* A "context" is the union of one or more subcontexts, subject to the
+  restriction that none of the virtual addresses overlap.
+* Some subcontexts can be mapped into multiple contexts.  In this case, the
+  pages are always in the same virtual addresses in all contexts, with the same
+  physical backing pages.  They are kept synchronized, meaning that when a page
+  is mmap()ed or munmap()ed to or from the subcontext, that change is
+  immediately reflected in all copies of the subcontex in all contexts.
+* By default, no subcontext has access to the pages of any other (even if they
+  share a context).  However, permissions may be defined which give data access
+  (read and/or write) and/or call access (which can be the rights to call at a
+  specific location, or to call into any location in the target subcontext).
+
+While subcons allows many other configurations, the most interesting is a
+trusted server/untrusted client configuration:
+- The client has no data access to the server.  The only call access it has is
+  point call access to a few, well-known entry points in the server.
+- The server has complete data access to the client, and complete call access
+  to the client.
+Thus, code running in the client doesn't even know that the server exists,
+except for the "holes" in it memory map where it can't mmap() anything, and the
+"magic" locations where it can call server services.  However, code running in
+the server sees the entire space (server+client) as if it was one large
+application.  It can read, write, and copy memory without any translation; it
+can return back into the client at any location.
+
+COMPARISONS
+
+I found several systems that had similar features, but nothing that really
+matched all of the capabilities of subcons.
+
+VARIOUS MICROKERNELS
+
+I looked into Mach, Exokernel, and L4.  None of these had any real direct
+relationship to subcons, except for the goal of userland implmentation of
+services.  Generally, their memory models were conventional (even though they
+are controlled by user services).  Some of the models were flexible that
+subcons could be built on top of them, others weren't.
+
+VARIOUS VMMS
+
+I looked into Disco and Xen.
+TODO
+
+CAPABILITY ARCHITECTURES
+
+In some very abstract sense, you could call subcons a "capability
+architecture."  I have multiple entities inside the same address space which
+have different rights to perform certain actions; these restrictions are
+absolute and enforced by the architecture; pointers to objects within the
+address space are globally valid and globally unique (within the address
+space), even in components that have no access rights to them.
+
+However, I shy away from the term because it usually denotes something far more
+extreme than what I am attempting.  For instance, capability architectures
+often protect all sorts of complex rights; subcons only protects memory access.
+Capability architectures often use a Single Virtual Space and One Level Store;
+subcons allows for overlapped components (provided that they are in different
+contexts), and it doesn't change anything about the filesystem.  Many
+capability systems allows you to gain access to very fine-grained components;
+subcons manages access with fairly coarse granularity.
+
+Finally, most capability architectures require a new architecture.  Subcons are
+backward binary compatible with legacy applications.  You can even have a
+subcon provide some sort of service to a legacy application without changing
+the application in any way.
+
+OKAMOTO, et. al.
+
+I found "A Micro-kernel Architecture for Next Generation Processors" [1].  This
+advocates a SVS (single virtual space) and an OLS (one level store) using 64bit
+processors.  The key thing that they did that was new was that you could get
+access to a given page of code based on *either* your thread ID, *or* the
+current page you were executing in.
+
+The first problem, of course, is that any system with a SVS is not
+backward-compatible (since legacy applications expect to be able to map at
+least a few of their pages to fixed addresses).
+
+In this setup, you have a certain set of pages which are tied to the thread,
+such as stack pages, thread local variables, etc.  You then had other pages
+which were tied to certain software components.  A given thread could access
+both the pages which were for that thread *and* the pages for that component.
+
+IPC was handled using "gate pages," which are pages which contain nothing but
+jump instructions into a certain destination component.  The gate pages have
+access to call into that component, and you give any client component access to
+call the gate pages.  However, the client component has no direct access to the
+destination.  The idea was that a client could call into the the gate page, and
+then be redirected to the proper location in the destination component; this
+would prevent the (untrusted) client from calling into arbitrary locations in
+the server.  However, this system was fundamentally flawed, as they were
+planning to implement it on the x86 architecture, where instructions are not
+aligned!  Thus, a malicious or buggy compnent could call to *any* location in
+a gate page; most likely, he would encounter an invalid instruction, but it
+would be conceivable for him to execute an instruction to send him to some
+other, undesired location.
+
+Moreover, because the page proteciton scheme is organized based on pages (not
+higher-level components), there are a lot of hard management problems to solve.
+Say you have a client C and a server S1.  C needs to give S1 access to all of
+its data pages.  This requires n^2 operations to manage, not to mention the
+problem of how to keep this list up-to-date when S1 adds additional code pages.
+Worse, what happens when S1 may delegate some operations to S2?  Now S1 needs
+to notify C to give S2 access to all of the pages, as well.  Further, we have
+problems with dependencies...when S1 maps new pages, does it block before using
+them until C has done the mapping work?  If so, then C (an untrusted component)
+can disrupt S1.
+
+A more practical solution would be to give the thread access to the buffer;
+then, it will be accessible in any component which this thread calls.  This
+works well for C, since it is the least-trusted component in the system.
+However, S1 cannot use this solution for any of its buffers, since that would
+give A access to one of S1's buffers.  So, a more general solution is required.
+
+OPERATING SYSTEM EXTENSIONS TO SUPPORT HOST BASED VIRTUAL MACHINES [2]
+
+This has a few enhancements to Linux designed to accelerate UML (User
+Mode Linux).  They are pretty close to (but not as flexible as) subcons.
+
+First, they implement something known as "ktrace," which is an advanced form of
+ptrace.  Basically, they make it possible for a tracing thread to script a set
+of actions to be taken when an event occurs.  So, instead of the normal UML
+mechanism of intercepting syscalls (which requires 6 context switches and
+numerous ptrace() system calls), syscalls are automatically handled in the
+(host) kernel and redirected to the proper handler in the guest kernel.  This
+allows the guest application to move (nearly) directly into the guest kernel
+(requiring only a single trip to the host kernel, and only 2 context switches).
+Subcons accomplishes the same thing by giving the client subcontext call rights
+to the server.  In the software implementation, both inventions will have
+roughly the same performance, but subcons has the advantage that it suggests a
+fairly straightforward hardware implementation (which would be much faster).
+
+Next, they use the x86 segmentation model to deny guest applications access to
+the guest kernel.  This works when the various components are contiguous (as is
+true for UML), but doesn't work when the components could be discontiguous (as
+subcontexts supports).  However, it would be an interesting performance
+enhancement for a subcontexts implementations...when the situation allows!
+
+Next, they allow VMMs to run in ring 1 (where they have access to protected
+memory but not to protected instructions) and allow them to read the system
+page tables directly.  This is obviously not something that will work when
+components are deeply nested, which subcons supports.
+
+Finally, it allows processes to have several page tables, and switch between
+them with a single operation (rather than using mmap() or mprotect() to perform
+the switching).  This allows for high-speed switching between various mapping
+modes (much like what subcons allows).  This is actually more general than
+subcons allows (since you could construct just about any different page
+tables), but it doesn't solve the problem of managing how those different page
+tables are constructed.
+
+OPAL
+
+Opal is another 64bit operating system with a single address space.  They have
+two interesting primitives: the "segment" and the "protection domain."  A
+segment is roughly comparable to a Multics segment: it is a region of memory
+(contiguous and probably large) which can contain code or data.  A key
+difference in Opal, however, is that every segment is given a forever-unique
+virtual address (simplifying the link process, but making it harder to replace
+libraries).  A "protection domain" is an entity which has access to a certain
+subset of the segments.  Code calls from one "protection domain" to another
+through "portals," which are basically a simple RPC mechanism.
+
+Calling from one protection domain into another is roughly similar to a call
+from one subcontext to another: you enter the other entity at a well-known
+address, changing your access rights at the same time.  Because of the
+single address space, pointers to data can be sent from one protection domain
+to another, and (like subcons) they continue to be valid even if the
+destination has no rights to use them.
+
+However, protection domains don't have any mechanism for transitive mappings.
+(Subcons says that if A can read B, and B can read C, then A has implicit
+rights to read C.)  So, it may be difficult to build hierarchal systems
+(because clients need to know about the entire chain of servers in order to
+give all of the the rights they need).
+
+Also, Opal did not firmly enforce the protection scheme.  The scheme was based
+on capabilities, where capabilities are validated using a randomly-generated
+key.  This allows capabilities to be copied through components (with no direct
+kernel knowledge), but it also means that a lucky or persistent component (or
+one which snoops another component's memory) can falsify a capability and get
+access to something that it should not have.
+
+Finally, Opal's single-address-space causes a lot of problems.  They are not
+backwards compatible with old applications, and have trouble implementing
+shared libraries (since there is only one copy of the library, but there must
+be private data for the many places where that library is used).  They cannot
+even emulate simple UNIX operations as fork(), because fork() requires that
+there be two processes which use the same virtual addresses to refer to
+different physical pages.
+
+BIBLIOGRAPHY
+
+1. Okamoto, T., Segawa, H., Shin, S., Nozue, H., Maeda, K., and Saito, M.  "A micro-kernel architecture architecture for next generation processors."  In USENIX Workshop on Microkernels and Other Kernel Architectures, pages 83--94, April 1992.       I haven't found a softcopy, but I found the book in the UA library.
+
+2. King, T. and Chen, Peter.  "Operating System Extensions to Support Host Based Virtual Machines."
+
+3. Chase, J., Levy, H., Feeley, M., and Lazowska, E.  "Sharing and Protection in a Single-Address-Space Operating System."
+

@@ -1,0 +1,7 @@
+Mach doesn't have much connection to subcontexts, except for the general
+concept of a microkernel.  Its virtual memory system doesn't allow any new
+features; most importantly, it doesn't allow for a service's memory to be
+synchronously shared between two contexts.  It does allow shared memory pages,
+but only when they are inherited from a parent process to a child, and never
+dynamically allocated.
+

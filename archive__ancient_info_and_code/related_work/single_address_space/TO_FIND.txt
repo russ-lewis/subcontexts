@@ -1,0 +1,12 @@
+Custer, H. 1993. Inside Windows NT.  Look for "based sections".  Mentioned in opal.pdf
+
+
+
+Jeffery S Chase, Henry M Levy, Michel Baker-Harvey, and Edward D Lazowska.  How to use a 64-bit virtual address space.  Technical Report TR 92-03-02, University of Washington, 1992.        Mentioned in "Exokernel: an operating system architecture for application-level resource management" (engler95exokernel.pdf).
+
+Also mentioned:
+A W Appel and K Li.  Virtual memory primitives for user programs
+K Harty and D R Cheriton.  Application-controlled physical memory using external page-cache management.
+Keith Krueger, David Loftesness, Amin Vahdat, and Thomas Anderson.  Toos for development of application-specific virtual memory management.
+Jochen Liedtke.  Improving IPC by kernel design.
+

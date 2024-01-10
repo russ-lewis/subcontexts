@@ -1,0 +1,5 @@
+Disco is a conventional VMM (which runs in supervisor mode, and otherwise
+conventional OSes run in usermode).  I'm attempting something different: I'm
+splitting the user mode into different hierarchal levels, and then moving some
+kernel functionality there.
+

@@ -1,0 +1,221 @@
+What exokernel is:
+------------------
+
+An 'exokernel' is a microkernel, where none of the physical resources are
+virtualized, and where we expect to have a multiplicity of resource
+managers for each resource.
+
+That is, rather than asking for "a page" (and then receiving a virtual
+address in response), a managing service asks for "this specific page"
+(by its physical address).
+
+This allows a service (a "library OS," in exokernel terminology) to have
+maximal insight into the actual physical implementation of the resources
+that it manages, and reduces the cost of lookup/management by the
+exokernel itself (since it never has to handle virtual->physical translation,
+overallocation, etc.).
+
+Therefore, the "exokernel" never has to perform virtual->physical
+translation for any resource; rather, it simply asks itself if a given actor
+has a "capability" to access the resource in question.  They make a big deal
+(which I think is mostly unjustified) of the difference between lightweight
+lookups and heavyweight lookups; lightweight lookups are performed by the
+exokernel based on prior heavyweight calculations; heavyweight lookups are
+performed by the library OS.
+
+Of course, since the library OSes see the actual physical names, they must be
+involved in resource revocation.  This process has three steps:
+  - Cooperative
+  - Last warning (urgent)
+  - Repossession
+
+In the first phase, the exokernel makes an upcall (or some other mechanism???)
+into the library OS, asking for it to revoke a resource.  (I'm not clear
+whether the exokernel chooses which physical resource will be reclaimed, or if
+it asks the library OS to choose.)  If the library OS is well-behaved, then
+the revocation proceeds promptly; no escalation is required.
+
+In the second phase (which only kicks in if the library OS is unresponsive or
+uncooperative), the exokernel sends a second warning, demanding that the libary
+OS (for instance) "return a page within 50 micro-seconds."  I can't tell that
+this actually means anything more than the first call - but I suppose that it
+allows the library OS to know that it needs to use an alternate (stupid but
+fast) algorithm.
+
+If the library OS is still unresponsive, then the exokernel will take a
+resource by force.  However, the exokernel has no way to know what sort of
+state needs to be saved from the resource.  For instance, the resource might
+be a physical page - and thus, the entire contents of the page might be
+critical state.  Since there is no virtualization to clarify what needs to be
+saved, the exokernel must save everything - which means that "revoking" a
+physical page really means "saving the entire page, which the library OS
+refused to do of its own volition."
+
+Repossessed resources are recorded by the exokernel (for the information of
+the library OS) in a "repossession vector", and the library OS is interrupted
+with a "repossession exception."  This means that the library OS gets
+synchronously notified about the lost resource - but it also means that it
+must do some (very painful!) stack editing/exceptions to handle the possibility
+that the lost resource might be referenced by some interrupted code.
+
+Additionally, each library OS is allowed to mark a small number of its
+resources as critical bootstrap devices (like the memory it uses for critical
+tables and such).
+
+So far, it may seem that a library OS is only applicable to a single process:
+that no shared state is allowed.  This is not true; shared state is
+implemented via the granting of capabilities from one process to another.  That
+is, a library OS can tell the exokernel "please give application X access to
+physical page Y, using virtual address Z."  The exokernel writes out a page
+table entry to that effect - and that is all of the state that is required;
+the exokernel doesn't need to store any more persistent information.  The page
+table entry functions implicitly as a cache of authentication information;
+since X has a map Z->Y, we know that the owner of Y gave it access.  (I suppose
+that the exokernel needs to keep reverse mapping information - that a
+revocation of Y must involve clearing the Z entry from X - but the paper
+doesn't explicitly say this.)
+
+Note that the exokernel does not need to persistently store capability
+assignments; when the resource is reclaimed (either by force or by the choice
+of the library OS), all memory about which processes have capabilities related
+to it are lost.  Later, when the resource is re-created (probably at a
+different physical address), the library OS will have to re-define the
+capability assignments.
+
+In this way, exokernel is a lot more like a hypervisor than a microkernel.
+Recall that some hypervisors expose physical names to the para-virtualized
+systems; while the hypervisor still enforces the defined partitioning, there
+is a one-to-one mapping between physical addresses known to the
+para-virtualized kernel and the actual physical resources.  (For a noteworthy
+example of this, see the "Mercury" paper that I read recently:
+    grad_school/interesting_papers/mercury*.pdf)
+
+SUMMARY:
+--------
+
+Exokernel is an interesting idea (give library OSes more literal knowledge of
+the available physical resources), but a flawed one: the model it provides to
+the library OSes is a lot like a raw physical model, but with the potential for
+arbitrary revocation of resources.  Library OSes cannot be portable (as they
+need knowledge of the hardware); nor can they be fully-virtualized kernels (as
+they need to handle revocation).  I think that exokernel is likely to be a
+poor alternative to either a microkernel (portable application-level code) or
+a virtual machine (non-portable kernel-level code).
+
+RELATION TO SUBCONTEXTS:
+------------------------
+
+Beyond the basic point that an exokernel is yet another academic attempt at a
+workable microkernel (meaning that subcontexts is likely to attract the same
+attention), what applicability does an exokernel have to subcontexts?  In
+particular, do the library OSes share memory space with their client processes,
+in any sense?
+
+To be blunt, the paper isn't clear.  Section 4.6 (page 10) describes
+"Protected Control Transfers" (which are basically RPCs); however, the
+implementation is not clear.  They mention transferring the "addressing-context
+identifier and address space tag" to the target process; however, it does not
+seem that they (necessarily) are giving one process access to another.
+
+I argue this for three reasons.  First, they have two mechanisms which seem to
+be equivalent except for scheduling: "synchronous" transfers donate the current
+timeslice *PLUS FUTURE* timeslices, to the target process until it returns.
+This certainly sounds like a function call.  However, "asynchronous" transfers
+donate *ONLY* the current timeslice, meaning that the original thread will
+run again on the next time slice - which sounds like an async event.  But other
+than the scheduling difference, they seem to think that both operations are
+roughly the same.
+
+Second, there is no discussion of virtual addressing issues: allocation of
+space, dealing with overlaps or conflicts, or the like (which should be
+critical for subcontexts or anything like it).
+
+Third, the exokernel model doesn't allow it (unless there are subtleties I
+don't understand: the exokernel has no knowledge of a "virtual address space;"
+it only knows about the current mappings.  Even if some virtual address handoff
+is in place, it would have to be handled by the library OS - paging in entries
+on demand.  (I think.)
+
+
+
+
+
+
+
+OLD TEXT:
+---------
+
+* "An 'exokernel' securely multiplexes available hardware resources," while
+libraries (in user space) provide abstractions.  Libraries are encouraged to
+develop domain-specific optimizations.
+* Each application links with its own "library operating system"
+
+Q: How do we share data between different user-space libraries?
+A: "Secure binding" allows the owner of a resource to define that other
+   applications have certain types of access to the resource.  For instance, a
+   file system server can tell the exokernel that a certain application has the
+   right to map a certain physical page (which represents the mmap'ing of that
+   file).  The client application must define the mapping later.  The
+   high-level semantics of the file system are opaque to the exokernel.
+
+INTERESTING: "Secure binding" permissions in the exokernel are called
+"capabilities."
+
+
+
+RESPONSE:
+
+Both subcontexts and exokernel are an attempt to move functionality out of the
+kernel and into the address space of the process.  However, they differ
+significantly in how they approach this.
+
+Functionality typically resides inside the kernel for one of three reasons:
+* Needs access to protected mode functionality (such as virtual memory
+  management)
+* Needs protection from the application, and IPC is too costly for this
+  interface
+* Needs lots of access to other components which are in the kernel, and
+  repeatedly crossing the user/kernel barrier would be too costly
+
+Subcontexts is based on the observation that the vast majority of kernel code
+is in the kernel because of the 2nd or 3rd reasons: relatively little of the
+code actually requires protected mode functionality.  Thus, subcontexts
+attempts to solve the 2nd problem while staying in user space, while leaving
+the 1st problem unsolved (this implicitly solves the 3rd problem for many
+other components).  Then, the only components which need to be left in the
+kernel are those which need supervisor features (the 1st problem) and those
+which need to communicate with them a lot (the 3rd problem).  The latter are
+mostly composed of the policy management code for the supervisor features.  For
+instance, page table management must be handled with supervisor features, so
+the code which keeps track of the assignment of virtual addresses to physical
+pages can reasonably be kept in the kernel as well.
+
+Exokernel is much more aggressive, attempting to move almost everything out of
+the kernel.  All of the 3rd type of components are moved into user space.  They
+attempt to argue that the cost of the user/kernel crossovers can be paid for by
+their bypassing of the high-complexity abstractions often implemented by other
+operating systems.
+
+However, in the literature that I have read, they have a major oversight: they
+overlook the fact that many critical system services must be shared between
+many applications.  These services cannot be located inside an application's
+"operating system library;" instead, they must be implemented in a protected
+service.  Exokernels solve this using the traditional microkernel solution:
+move the service into another application, and have the applications
+communicate through an RPC mechanism.  (They call this "control transfers," but
+control transfers are just a generalization of RPC.)  The problem is that they
+have not solved the performance and complexity problems inherent in RPC.  While
+their control transfers are fast, another OS could implement a highly optimized
+mechanism to get the same performance...yet experience shows that even that is
+not enough to get performance which is competitive with monolithic kernels.
+Moreover, they are still left with the complexities of access to the client's
+memory: they must perform indirection and/or marshalling to get access to data,
+which is always costly.
+
+Thus, Exokernels do not solve the fundamental problems attacked by subcontexts.
+But could an Exokernel implement subcontexts, without a kernel change?  The
+simple answer is no: although they could do something similar (replicating the
+subcontexts memory-mapping features, though with difficulty), they could not
+implement the entry-point functionality.  (They would fall back on their RPC
+mechanisms, which are fundamentally more complex than entry points.)
+

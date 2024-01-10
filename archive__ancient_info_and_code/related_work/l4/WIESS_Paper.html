@@ -1,0 +1,853 @@
+<html><head><title>WIESS Paper</title><!-- IE understands topmargin, leftmargin, rightmargin, NS understands marginheight -->
+<meta name="description" content="Stub-Code Performance is Becoming Important"><meta name="keywords" content="Microkernel, IPC, IDL, stub code, efficiency, L4, gcc, Flick, performance, optimization"><meta name="resource-type" content="document"><meta name="distribution" content="global"></head>
+<body topmargin="0" leftmargin="0" rightmargin="0" alink="#666666" bgcolor="#ffffff" link="#990000" marginheight="0" text="#000000" vlink="#666666">
+<!-- Banner -->
+<table bgcolor="#ffffff" border="0" cellpadding="0" cellspacing="0" width="100%">
+<tbody><tr><td align="left" valign="top"><table border="0" cellpadding="0" cellspacing="0" width="600"><tbody><tr><td>
+<table border="0" cellpadding="0" cellspacing="0" width="600">
+<!-- space at top -->
+<tbody><tr><td colspan="13"><img src="WIESS_Paper_files/dot_clear" alt="" height="5" width="1"><br></td></tr>
+ <tr><!-- row 1 -->
+   <td colspan="13"><img src="WIESS_Paper_files/smalltop" alt="" border="0" height="6" width="600"></td>
+  </tr>
+
+  <tr><!-- row 2 -->
+   <td rowspan="2"><img src="WIESS_Paper_files/smallleft" alt="" border="0" height="23" width="102"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/"><img src="WIESS_Paper_files/smallhome" alt="Home" border="0" height="16" width="38"></a></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/divider16" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/about"><img src="WIESS_Paper_files/smallabout" alt="About USENIX" border="0" height="16" width="90"></a></td>
+   <td bgcolor="#666666"><img src="WIESS_0Paper_files/divider16" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/events"><img src="WIESS_Paper_files/smallevents" alt="Events" border="0" height="16" width="42"></a></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/divider16" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/membership"><img src="WIESS_Paper_files/smallmembership" alt="Membership" border="0" height="16" width="78"></a></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/divider16" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/smallpublications" alt="Publications" border="0" height="16" width="77"></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/divider16" alt="" border="0" height="16" width="17"></td>
+   <td bgcolor="#666666"><a href="http://www.usenix.org/students"><img src="WIESS_Paper_files/smallstudents" alt="Students" border="0" height="16" width="54"></a></td>
+   <td bgcolor="#666666"><img src="WIESS_Paper_files/smallright16" alt="" border="0" height="16" width="34"></td>
+  </tr>
+
+  <tr><!-- row 3 -->
+   <td colspan="12" bgcolor="#666666"><img src="WIESS_Paper_files/dot_clear" alt="" border="0" height="7" width="2"></td>
+  </tr>
+
+</tbody></table>
+</td></tr></tbody></table></td></tr></tbody></table>
+<!-- End of Banner -->
+
+
+<table border="0" cellpadding="8" cellspacing="0" width="100%"><tbody><tr><td>
+
+
+<font color="#990000" face="verdana, arial, helvetica, sans-serif" size="+1"><b>WIESS 2000 Paper</b></font>&nbsp;&nbsp;&nbsp;
+<font face="verdana, arial, helvetica, sans-serif" size="-1">[<a href="http://www.usenix.org/events/wiess2000/technical.html">WIESS Tech Program Index</a>]</font>
+<p><table>
+<tbody><tr><td><b>Pp. 31&#8211;38 of the <i>Proceedings</i></b></td><td align="bottom"><a href="http://www.usenix.org/publications/ordering/"><img src="WIESS_Paper_files/buy_now" border="0"></a></td></tr>
+</tbody></table>
+<!-- START OF PAGE CONTENTS -->
+
+
+
+
+
+
+
+
+</p><center><h2>Stub-Code Performance is Becoming Important</h2><p>
+<table border="0"><tbody><tr>
+<td valign="top"><center>Andreas Haeberlen</center></td><td width="20"></td>
+<td valign="top"><center>Jochen Liedtke</center></td><td width="20"></td>
+<td valign="top"><center>Yoonho Park</center></td><td width="20"></td>
+<td valign="top"><center>Lars Reuther</center></td><td width="20"></td>
+<td valign="top"><center>Volkmar Uhlig</center></td>
+</tr></tbody></table>
+<table border="0"><tbody><tr>
+<td valign="top"><center><a href="http://www.uni-karlsruhe.de/">University of Karlsruhe</a><br><a href="http://i30www.ira.uka.de/">System Architecture Group</a><br>76128 Karlsruhe,&nbsp;Germany<br>
+<i>{haeberlen,liedtke,uhlig}@ira.uka.de</i></center></td><td width="20"></td>
+<td valign="top"><center><a href="http://www.watson.ibm.com/">IBM T.J.Watson</a><br>Hawthorne,&nbsp;NY&nbsp;10532<br>
+<i>yoonho@us.ibm.com</i></center></td><td width="20"></td>
+<td valign="top"><center><a href="http://www.tu-dresden.de/">Dresden University of Technology</a><br><a href="http://os.inf.tu-dresden.de/">Department of Computer Science</a><br>
+01062&nbsp;Dresden,&nbsp;Germany<br><i>reuther@os.inf.tu-dresden.de</i></center></td>
+</tr></tbody></table>
+</p></center><p>
+
+</p><h3>Abstract</h3>
+
+As IPC mechanisms become faster, stub-code efficiency
+becomes a performance issue for local client/server
+RPCs and inter-component communication. Inefficient
+and unnecessary complex marshalling code can almost
+double communication costs. We have developed an
+experimental new IDL compiler that produces near-optimal
+stub code for gcc and the L4 microkernel. The
+current experimental IDL4 compiler cooperates with the
+gcc compiler and its x86 code generator. Other compilers
+or target machines would require different optimizations.
+In most cases, the generated stub code is approximately
+3 times faster (and shorter) than the code
+generated by a commonly used portable IDL compiler.
+Benchmarks have shown that efficient stubs can increase
+application performance by more than 10 percent. The
+results are applied within IBM&#8217;s <i>SawMill</i> project that
+aims at technology for constructing multi-server operating
+systems.<p>
+
+</p><h3>1 Motivation</h3>
+
+Multi-server and component-based systems are promising
+architectural approaches for handling the ever-increasing
+complexity of operating and application systems.
+Components or servers (and clients) communicate
+with each other through cross-domain method invocations.
+Such interface method invocations, if crossing
+protection boundaries, are typically implemented
+through the inter-process communication (IPC) mechanisms
+offered by a microkernel.<p>
+Firstly, component interaction in such systems has
+to be highly efficient. Therefore, for over a decade,
+performance-oriented research focused on microkernel
+construction, in particular IPC performance, finally
+resulting in acceptable IPC overheads (100...200 cycles)&nbsp;[<a href="#cite6">6</a>, <a href="#cite2">2</a>].</p><p>
+Secondly, component interaction has to be conveniently 
+usable from an application programmer&#8217;s perspective.
+This requirement led to the development
+of interface-definition languages (IDLs), e.g. Corba
+IDL [<a href="#cite7">7</a>], DCOM [<a href="#cite3">3</a>] and their corresponding IDL compilers.
+From interface procedure/method definitions,
+such compilers generate stub code that marshals parameters
+on the client side, communicates through IPC or
+RPC kernel primitives with the server, unmarshals the
+parameters on the server side, invokes the corresponding
+server procedure/method, etc. As a result, a programmer
+can specify and use remote interfaces as easily as internal
+ones.</p><p>
+So far, IDL-compiler research has focused more on
+generating code in a portable and adaptable way than
+on producing efficient stubs. In fact, stub-code performance
+was insignificant for early microkernels that
+required multiple thousands of cycles per IPC. However,
+with high-performance IPC, stub-code efficiency
+becomes an issue.</p><p>
+For example, when using the Flick IDL compiler [<a href="#cite4">4</a>]
+for the <i>SawMill</i> Linux file system [<a href="#cite5">5</a>], we found that the
+generated user-level stub code consumed about 260 instructions
+per read request. When reading a 4K block
+from the file system, the stub code adds an overhead of
+about 17% due to stub instructions. (The stub code may
+also generates further indirect costs through side effects
+such as cache pollution.) For an industrial system, such
+overheads can no longer be ignored.</p><p>
+Hand coding of the aforementioned stub resulted
+in 80 instead of 260 instructions. Although this
+was a singular experiment, it gave us some evidence
+that improving stub-code generation might be worthwhile.
+The potentially achievable reductions justified
+a compiler-construction experiment to explore whether
+near-optimal stub code can be generated at reasonable
+costs.</p><p>
+This paper describes the resulting IDL4 compiler that
+generates code for gcc on x86 and the L4 microkernel.
+The current IDL4 is a prototype that purely focuses on
+generating efficient code. Portability and adaptability
+are ignored and remain a topic for future work.</p><p>
+
+</p><h3>Structure of the paper</h3>
+
+This paper reports on progress that has been made with
+IDL4, an experimental IDL compiler for the L4 microkernel.
+Section 2 sketches prerequisites for understanding
+the subsequent discussion such as IDL syntax,
+L4-IPC mechanisms, and our experiences using the
+Flick IDL compiler in the <i>SawMill</i> project. Section 3
+describes the stub-code model that was designed for
+the IDL4 compiler, and Section 4 illustrates the code-generation
+principles. Finally, Section 5 reports on the
+achieved stub-code quality, Section 6 discusses the costs
+of adapting the system to other processor architectures
+and compilers, and Section 7 concludes.<p>
+
+</p><h3>2 Prerequisites</h3>
+
+<h4>2.1 L4/x86 IPC</h4>
+
+L4&#8217;s [<a href="#cite6">6</a>] basic communication paradigm is synchronous
+IPC. Typical operations are <i>send</i>, <i>receive</i>, <i>call</i> (atomic
+send&amp;receive), and atomic <i>reply&amp;wait</i>. Rich message
+types help to improve end-to-end IPC performance:<p>
+<i>Register messages</i> consist of a small number of 32-bit
+words that are sent and received in general purpose registers.
+On the x86 platform, up to 3 words (plus sender
+id and message descriptor) can be transferred as a register
+message. As there is no need for copy operations
+across address space boundaries, register messages have
+the lowest IPC costs, e.g. 180 cycles on a Pentium III 450 MHz.</p><p>
+<i>Memory messages</i> can be used to copy longer messages
+from the sender&#8217;s address space to the receiver.
+Message size can be up to 2MB; however, this mechanism
+is slower than a register message because it involves
+copying from/to memory, and the kernel might
+have to establish a temporary mapping to make both address
+spaces available at the same time.</p><p>
+<img src="WIESS_Paper_files/message" alt="Complex memory message including indirect strings" align="right" height="280" hspace="10" width="357">
+<i>Indirect strings</i> avoid unnecessary copy operations
+to/from the message buffer. Up to 31 strings can be
+included in a memory message. On the receiver side,
+buffers for such strings can be specified so that the IPC
+can copy directly from server object to client object or
+vice versa. Scatter/gather permits strings to be gathered
+on the sender side and/or scattered on the receiver
+side. Thus multiple blocks can be directly transferred to
+a single receive buffer; a single send buffer can be split
+into multiple blocks. Figure 1 illustrates how a complex
+memory message is transferred.</p><p>
+<i>Map messages</i> map pages or larger parts of the
+sender&#8217;s address space into the receiver&#8217;s space. This
+feature enables user-level pagers and main-memory
+management on top of the microkernel. Special communication
+mechanisms based on shared regions can also
+be constructed.</p><p>
+
+</p><h4>2.2 SawMill</h4>
+
+<a href="http://www.research.ibm.com/sawmill/">IBM&#8217;s <i>SawMill</i> project</a>
+aims at addressing the complexity
+of developing and maintaining a variety of custom
+operating systems. With the emergence of embedded
+and personal systems, the need to create operating systems
+customized to device and application requirements
+has increased significantly. The development and maintenance
+of these operating systems is quite unwieldy. As
+a first step, the <i>SawMill</i> project is developing an approach
+and tools to decompose existing operating systems
+into flexibly reusable components. The next step is
+to define an architecture upon which efficient and robust
+operating systems can be composed. This framework is
+being applied to Linux to create <i>SawMill</i> Linux which
+consists of Linux-based components running on top of
+the L4 microkernel. It provides typical system services
+through multiple user-level servers, such as file systems,
+device drivers and network systems. Further general
+components such as memory servers, task servers, and
+access control managers enable the composition of a coherent
+Linux system.<p>
+
+</p><h4>2.3 Flick</h4>
+IDL Compilers such as <a href="http://www.cs.utah.edu/flux/flick/">Flick</a> [<a href="#cite3">4</a>] are relatively easy to
+port to a new OS or middleware kernel, and they are extensible
+through new data types. The output of an IDL
+compiler is typically used as input for a general-purpose
+compiler, e.g. gcc, that a programmer uses for code development.
+Easy adaptation of the IDL compiler to new
+general-purpose compilers is a further relevant property.<p>
+Flick tries to generate efficient stub code by using inline
+functions and macros for the generated stubs whenever
+possible. Nevertheless, at least when combined
+with gcc, this results in huge amounts of data transfer
+operations that are logically superfluous. In theory, a
+compiler should be able to remove all of them. In practice,
+the required data flow analysis is too complicated;
+consequently, inefficient code is generated.</p><p>
+
+</p><h3>3 Designing a Stub Model</h3>
+
+<h4>3.1 A Simple Stub Model</h4>
+We first describe a simple stub model to illustrate the
+tasks performed by stub code on the client side and on
+the server side. For this simple model, we assume that
+a client invokes a procedure or method <i>M</i> that is supplied
+by the server. Synchronization and concurrency
+are ignored in this simple model. <i>M</i> has <i>in</i> parameters
+(values passed from the client to the server), <i>out</i> parameters
+(result values passed from the server back to the
+client), and <i>inout</i> parameters that are first passed to the
+server and then overwritten by results coming back from
+the server.<p>
+The IDL compiler generates a client stub procedure
+<i>M_client</i> for each function <i>M</i> in the interface definition.
+The client stub is called locally by the client application.
+The fact remains hidden that the service function does
+not run locally, but rather in another address space or
+even on another computer thousands of miles away. The
+client stub assembles a message with all the information
+the server requires to complete the task, including all the
+parameters (<i>marshalling</i>).</p><p>
+The message is then sent to the server, and the client
+waits for the server&#8217;s reply. The reply message contains
+all out and inout result values. The client stub unpacks
+these values from the message and stores them in the
+appropriate client parameters (<i>unmarshalling</i>). In detail,
+the client stub <i>M_client</i></p><p>
+</p><center><table border="0">
+<tbody><tr><td rowspan="10" width="20"></td>
+<td valign="top"><b>C1&nbsp;</b></td><td>constructs a <i>request</i> message that contains all
+input and inout parameters, and a <i>key</i> that
+identifies the procedure/method <i>M</i> (<i>marshalling</i>);</td></tr>
+<tr><td valign="top"><b>C2</b></td><td>sends the request message to the server that
+implements <i>M</i> and waits for a reply message from the server;</td></tr>
+<tr><td valign="top"><b>C3</b></td><td>fills the inout and out parameters with data
+received through the reply message (<i>unmarhalling</i>); and</td></tr>
+<tr><td valign="top"><b>C4</b></td><td>returns to the invoking client.</td></tr>
+</tbody></table></center><p>
+The server programmer implements a procedure <i>M_server</i>
+on the server side for each method <i>M</i> of the interface
+definition.</p><p>
+The IDL compiler generates a central code pattern
+that handles communication, decoding, marshalling, and
+unmarshalling of parameters. This central server code
+typically includes a main loop that receives requests
+from clients and distributes them to the corresponding
+server procedures <i>M_server</i>. For each <i>M_server</i>, the
+IDL compiler generates a server stub that examines
+the request packet and retrieves the input data (<i>unmarshalling</i>).
+The stub then invokes the routine itself and
+finally creates a reply for the client.</p><p>
+An IDL compiler should generate both the main loop
+and the stubs automatically. Users should be able to easily
+modify the loop code, because they might want to
+implement additional features, e.g. load balancing.</p><p>
+In detail, a thread that waits for client requests 
+</p><p></p><center><table border="0">
+<tbody><tr><td rowspan="10" width="20"></td>
+<td valign="top"><b>S0&nbsp;</b></td><td>receives 
+the request message and uses the
+received key to determine which procedure/method <i>M</i> 
+should be invoked and which parameters are expected and 
+will be returned by <i>M</i>;</td></tr>
+<tr><td valign="top"><b>S1</b></td><td>extracts 
+in and inout parameters from the re-ceived
+request message (<i>unmarshalling</i>);</td></tr>
+<tr><td valign="top"><b>S2</b></td><td>calls 
+the server procedure <i>M_server</i> with the
+extracted parameter values;</td></tr>
+<tr><td valign="top"><b>S3</b></td><td>constructs 
+a reply message and stores the result
+values of all inout and output parameters
+of procedure <i>M_server</i> in that message (<i>marshalling</i>);</td></tr>
+<tr><td valign="top"><b>S4</b></td><td>sends 
+the reply message back to the client.</td></tr>
+</tbody></table></center><p>
+Steps C2, S0, and S4 are basically determined by the underlying
+IPC system, in our case by the L4 microkernel.
+Steps C4 and S2 are determined by the general-purpose
+compiler used, in our case gcc. Marshalling and unmarshalling,
+steps C1+S1 and S3+C3, are less restricted and
+more crucial. As our experience with Flick shows, a less
+optimal model can easily result in significant copy overhead
+for marshalling and unmarshalling.</p><p>
+
+</p><h4>3.2 Marshalling Through Direct Stack Transfer</h4>
+
+<img src="WIESS_Paper_files/transfer" alt="Direct Stack Transfer" align="left" height="268" hspace="10" width="358">
+To get an idea of how parameters can be communicated
+most efficiently between <i>M_client</i> and <i>M_server</i>, we
+first look at a local procedure call. <i>Gcc</i> and many other
+C compilers push input-parameter values on the stack
+prior to procedure invocation. Figure 2 shows the stack
+layout for a procedure called with 3 input parameters.
+Now look at the remote case. Three parameter values
+have just been pushed on to the client stack (left,
+<i>M_client</i>). On the server side (right), <i>M_server</i> 
+would ideally expect a stack of exactly the same content since
+<i>M_server</i> has exactly the same parameters as <i>M_client</i>. 
+Basically, the stub code had to copy the stack frame one-to-one 
+from the client to the server stack. No additional
+operations would be required for parameter marshalling/unmarshalling.<p>
+Since out parameters in C are typically implemented
+through pointers (which are passed as in parameters), we
+have to extend the parameter set by pointers that point to
+those variables that are later sent back to the client as out
+parameters. Figure 3 illustrates the three basic layouts:
+
+</p><ol>
+<img src="WIESS_Paper_files/layout" alt="Message layouts" align="right" height="314" hspace="10" width="359">
+<li>
+The client constructs a message that contains all in and
+inout values (plus optional strings). The message buffer
+has enough space to receive the reply message from the
+server.
+</li><li>The server extends the received message by pointers that
+make the inout and out parameters (and optional strings)
+accessible for the server procedure <i>M_server</i>. Then it 
+invokes <i>M_server</i>. As a normal C function, it works on 
+its input parameters (PTR, IN and the caller ID).
+</li><li>After returning from <i>M_server</i>, the stub removes pointer
+and in parameters from the stack, pushes the return value
+and an appropriate message header, and sends the resulting
+reply message to the client.
+</li></ol>
+An immediate consequence of the stack and message
+layouts is that the IDL compiler must sort parameters
+to enforce the sequence in, inout, out.¹<p>
+</p><div><font size="-2">¹ A similar sorting mechanism is used to 
+collect string parameters and pages to be mapped</font></div><p>
+
+</p><h4>3.3 Complex Data Types</h4>
+
+At this time, the only data types IDL4 handles are 32-bit 
+words and strings (up to 2 MB). It will be extended
+by pages to also handle mapping through IDL functions.
+Any other data type can be implemented through those
+basic types. Large objects like arrays or structs can be
+transferred as strings, while small objects (characters,
+short integers) may safely be extended to 32-bit words.
+Extending smaller objects to words has no additional
+costs since gcc maps such objects to words anyhow
+when generating local function calls. Implementing
+large data types as indirect strings is beneficial since it
+avoids copying them into the message buffer.<p>
+
+</p><h3>4 Generated Code - An Example</h3>
+
+To further illustrate details, we analyze the output that
+the compiler generates for the function <i>pfs_write</i> of the
+physical file system (pfs):
+
+<pre>    int pfs_write([in] int handle,
+                  [in, out] int *pos,
+                  [in] int len,
+                  [in] int data_size,
+                  [in, size_is(data_size)] int *data);</pre>
+
+IDL4 generates three files which contain the client stubs,
+the server stubs and the main server loop. Client and
+server stubs are generated as <code>asm</code> functions for <i>gcc</i>. The
+server loop is in C so that it can easily be modified by an
+application programmer. It is common to all functions and decodes
+incoming requests, i.e. selects the appropriate server function and
+invokes it through the server stub:
+
+<pre>    setupNewBuffer();
+    ipcReceive();
+    do {
+         unpackQuery();
+         callStub();
+         packResponse();
+         setupNewBuffer();
+         ipcReplyWait();
+       } while (1);</pre>
+   
+<h4>Client stub</h4>
+
+<a href="#table1">Table 1</a> shows the output IDL4 creates for the pfs_write()
+call on the client side. Assuming it hands over two parameters
+in registers, this stub consists of 17 instructions.
+In detail, the code sections (referring to the numbers
+in the code) work as follows:
+<ol><li><i>Create descriptors for indirect strings.</i> pfs_write() has
+one input string, <code>*data</code>, so a descriptor has to be created.
+</li><li><i>Marshal parameters.</i> The input and inout parameters
+are pushed on the stack; inout parameters go first. Note
+that the last two parameters (<code>len</code> and <code>handl</code>) are not
+pushed, but loaded into the <code>EBX</code> and <code>EDI</code> registers.
+</li><li><i>Generate message header.</i> The header specifies the number
+of dwords to be transferred for both directions, as
+well as one dword for the mapping function, which is not
+used here.
+</li><li><i>Load registers for IPC and supply function key.</i> IDL4
+needs to specify the send and receive buffer addresses
+and a timeout. The function key is transferred via registers
+and loaded here as well.
+</li><li><i>Invoke IPC call.</i>
+</li><li><i>Unmarshal server output.</i> In the case of pfs_write(), a
+return value and the <code>*pos</code> parameter must be handled.
+These can be transferred via registers, so the memory
+buffer is entirely discarded.
+</li></ol>
+
+<center><table border="1" cellpadding="2">
+<tbody><tr><td><pre>__inline__ extern sdword pfs_write(sm_service_t __service, sdword handl,
+                                   sdword *pos, sdword len,
+                                   sdword data_size, sdword *data)
+{
+  dword __return;
+  int dummy0,dummy1,dummy2,dummy3;
+  
+  asm volatile (sub $8, %esp);
+  asm volatile (pushl %0 ::"g" ((int)data)); // (1) push instring
+  asm volatile (pushl %0 ::"g" (data_size)); // descriptor
+  asm volatile (pushl %0 ::"g" (*pos));      // (2) push 2 in
+  asm volatile (pushl %0 ::"g" (data_size)); // parameters
+  asm volatile (
+                 sub   $12, %%esp
+                 
+                 pushl $0xA100               // (3) msg header,
+                 pushl $0x8000               // bits describe msg struct
+                 pushl $0
+                 
+                 mov   %%esp, %%eax          // (4) ipc register setup
+                 pushl %%ebp                 // save frame prt reg
+                 xor   %%ebp, %%ebp          // reply msg type = short
+                 mov   func_id, %%edx        // function key
+                 xor   %%ecx, %%ecx          // timeouts = infinity
+                 
+                 int   $0x30                 // (5)
+                 popl  %%ebp                 // (6) (restore frame ptr reg)
+                 add  $48, %%esp             // release stack space
+                 
+                 : "=S" (dummy0), "=d" (__return), "=b" (*pos), "=D" (dummy3)
+                 : "S" (__service), "D" (len), "b" (handl)
+                 : "%eax", "%ecx"
+               );
+  return __return;
+}</pre></td></tr></tbody></table>
+<a name="table1"></a><b>Table 1.</b> <i>Client stub for pfs_write</i></center><p>
+
+</p><h4>Server stub</h4>
+The stub (see <a href="#table2">Table 2</a>) is called from the server loop. It
+converts the request message from the client into a stack
+frame for the server function:
+<ol><li><i>Move the stack pointer</i> to the message buffer. The message
+header and the function ID (which is the first dword
+in the payload) can be overwritten, so the new <code>ESP</code> points
+to the fifth dword in the buffer.
+</li><li><i>Add pointers to strings and output values.</i> First, a pointer
+to <code>*pos</code> is pushed, then one to the input string buffer.
+Finally, the ID of the source thread is supplied.
+</li><li><i>Perform function call.</i>
+</li><li><i>Create reply message.</i> The input values and pointers
+are discarded, then the return value and a new message
+header are added.
+</li><li><i>Restore the stack pointer.</i> Its original value was saved in
+<code>EBP</code> during the function call, as it is the only register that
+is automatically saved by <i>gcc</i>.
+</li></ol>
+
+<center><table border="1" cellpadding="2">
+<tbody><tr><td><pre>__inline__ extern void *call_pfs_write(void *buf, int com_source, int *strlist)
+
+{
+  int __return,dummy0,dummy1;
+  
+  asm volatile (
+                 pushl %%ebp                 // (1)
+                 mov   %%esp, %%ebp
+                 mov   %%eax, %%esp
+                 
+                 mov   %%eax, %%edi          // (2)
+                 add   $12, %%edi
+                 pushl %%edi
+                 pushl 4(%%esi)
+                 pushl %%ebx
+                 
+                 call  _pfs_write            // (3)
+                 
+                 add   $24, %%esp            // (4)
+                 pushl %%eax
+                 pushl $0x2000
+                 pushl $0x2000
+                 pushl $0
+                 
+                 mov   %%esp, %%eax          // (5)
+                 mov   %%ebp, %%esp
+                 popl  %%ebp
+                 
+                 : "=a" (__return), "=b" (dummy0), "=S" (dummy1)
+                 : "a" (buf), "b" (com_source), "S" ((int)strlist)
+                 : "%ecx", "%edx", "%edi"
+               );
+               
+  return (void*)__return;
+}</pre></td></tr></tbody></table>
+<a name="table2"></a><b>Table 2.</b> <i>Server stub for pfs_write</i></center><p>
+
+</p><h3>5 Performance</h3>
+
+<h4>5.1 Measurement Environment - SawMill Linux</h4>
+
+IDL4 is used in the <i>SawMill</i> project for component communications.
+<i>SawMill</i> Linux is a Linux-derived multiserver OS where physical 
+file systems (PFS), file and buffer cache, device drivers, network stack, 
+VM subsystems such as anonymous memory, etc. are all implemented
+as user-level servers that communicate through L4 IPC and IDL4 stubs.<p>
+For <i>SawMill</i>, we analyze the stubs that are required
+to let a normal Linux process execute file-system operations
+such as <i>open</i>, <i>read</i>, and <i>write</i>. The physical
+file system we used in the experiments is compatible to   
+   
+Linux&#8217; <i>ext2</i>. In fact, the <i>ext2</i> code was extracted from
+Linux and then combined with IDL4-generated server
+templates. The resulting ext2-compliant PFS runs as
+a user-level server in its own address space. Libraries
+have been modified such that now IDL4 stubs and L4 IPC
+communicate with <i>SawMill</i> servers. An <i>open</i> request is
+always sent first to the virtual file system (VFS) which
+propagates it to the corresponding PFS server. Subsequent
+<i>read/write</i> requests, however, are handled through
+direct communication between the user application and
+that PFS server, i.e., need only one RPC (two IPCs).</p><p>
+
+The normal <i>SawMill</i> Linux has all stubs generated by the IDL4
+compiler. In addition, we generated a second
+version of <i>SawMill</i> Linux whose stubs were all generated
+by the Flick compiler. For both versions, we measured
+stub instructions and application performance.</p><p>
+For our measurements, we used a Pentium&nbsp;III running
+at 500&nbsp;MHz with 64&nbsp;MB of main memory and a 540&nbsp;MB
+IDE disk drive (IBM&nbsp;DALA-3540).</p><p>
+
+</p><h4>5.2 Effects On IOzone Throughput</h4>
+
+The <a href="http://www.iozone.org/">IOzone benchmark</a> [<a href="#cite1">1</a>] begins by writing a file of
+64kB, then it reads the contents twice. In the second
+read phase, all requests can be backed by the page cache.
+The performance of the second phase is completely determined
+by processor operations, basically for communication
+and for copying data into the user program&#8217;s
+buffer, and not by disk accesses.<p>
+We measured reread throughput where IOzone read
+4 KB² of file data per read request. <a href="#table3">Table 3</a> presents the
+overall performance results reported by IOzone (ten consecutive
+iterations). IDL4 improves the IOzone throughput
+by approximately 13%. The time for a 4-KB read request
+decreases from 8.0&nbsp;µs to 7.0&nbsp;µs. Since reread costs
+are dominated by the data copy costs this result can only
+be explained by significant improvements in stub code.</p><p>
+
+</p><center><table border="1">
+<tbody><tr><td colspan="2"><center>IOzone reread throughput on SawMill Linux<br>
+using</center></td></tr>
+<tr><td><center><i>Flick stubs</i></center></td>
+<td><center><i>IDL4 stubs</i></center></td></tr>
+<tr><td>503 kB/s ± 17 kB/s</td><td>569 kB/s ± 18 kB/s (+13%)</td></tr>
+</tbody></table><a name="table3"></a><b>Table 3.</b> <i>Overall throughput (± standard deviation)<br>
+in the IOzone benchmark.</i></center><p>
+
+</p><div><font size="-2">² Longer read requests effectively 
+decrease application performance, independently of whether pure monolithic 
+Linux or <i>SawMill</i>/Flick or <i>SawMill</i>/IDL4 is used: The Pentium L1 cache has
+a size of 16&nbsp;KB. If, e.g., 8&nbsp;KB of data are copied from the page cache
+to the user buffer, this operation already floods the entire cache. So every
+other application or file system data access leads at first to a cache
+miss. Furthermore, since some further cache lines are also used for the
+data copy, the first part of the user buffer will be flushed from L1 at the
+end of the copy operation. Effectively, most application accesses to
+the data read will thus also lead to L1 cache miss except if a clever application
+would read its data or if the OS would copy its data in reverse
+direction.</font></div><p>   
+
+</p><h4>5.3 Stub-Code Instructions</h4>
+To analyze the stub-code performance, we counted
+the executed instructions for the Flick-generated and
+the IDL4-generated stubs. <a href="#table4">Table 4</a> compares the results
+for three SawMill file-system functions, <i>pfs_open</i>,
+<i>pfs_write</i>, and <i>pfs_get_direntries</i>. The numbers include
+all instructions that are executed in stubs and in the central
+server loop. For comparison, the number of instructions
+the L4 microkernel executes for the corresponding
+IPCs is also included. (Note that complex operations
+such as block transfer operations are counted per iteration.)
+The effective communication costs are then given
+by adding the stub costs -&nbsp;either Flick or IDL4&nbsp;-
+to the IPC costs.<p>
+
+</p><center><table border="1" cellpadding="2">
+<tbody><tr><td colspan="4">&nbsp;int <b>pfs_open</b>([in] int client, fobj, flags, mode, [out] int *handle)</td></tr>
+<tr><td>&nbsp;</td><td><center><i>IPC (kernel)</i></center></td>
+<td><center><i>Flick stub</i></center></td>
+<td><center><i>IDL4 stub</i></center></td></tr>
+<tr><td>&nbsp;client » server</td>
+<td><center><i>163</i></center></td>
+<td><center>116</center></td>
+<td><center>65&nbsp;<i>(-44%)</i></center></td></tr>
+<tr><td>&nbsp;client « server</td>
+<td><center><i>95</i></center></td>
+<td><center>105</center></td>
+<td><center>37&nbsp;<i>(-61%)</i></center></td></tr>
+<tr><td>&nbsp;total</td>
+<td><center><i>258</i></center></td>
+<td><center>221</center></td>
+<td><center>102&nbsp;<i>(-54%)</i></center></td></tr>
+<tr><td colspan="2"><b><i>&nbsp;eff. comm. instructions, IPCs+stubs&nbsp;</i></b></td>
+<td><center><b>479</b></center></td>
+<td><center><b>360</b>&nbsp;<i>(-25%)</i></center></td></tr>
+</tbody></table></center><p>
+
+</p><center><table border="1" cellpadding="2">
+<tbody><tr><td colspan="4">&nbsp;int <b>pfs_write</b>([in] int handle, [in,out] *pos, [in] int len, data_size,&nbsp;<br>
+[in, size_is data_size] int *data)</td></tr>
+<tr><td>&nbsp;</td><td><center><i>IPC (kernel)</i></center></td>
+<td><center><i>Flick stub</i></center></td>
+<td><center><i>IDL4 stub</i></center></td></tr>
+<tr><td>&nbsp;client » server</td>
+<td><center><i>248</i></center></td>
+<td><center>150</center></td>
+<td><center>73&nbsp;<i>(-51%)</i></center></td></tr>
+<tr><td>&nbsp;client « server</td>
+<td><center><i>95</i></center></td>
+<td><center>105</center></td>
+<td><center>38&nbsp;<i>(-64%)</i></center></td></tr>
+<tr><td>&nbsp;total</td>
+<td><center><i>343</i></center></td>
+<td><center>255</center></td>
+<td><center>111&nbsp;<i>(-56%)</i></center></td></tr>
+<tr><td colspan="2"><b><i>&nbsp;eff. comm. instructions, IPCs+stubs&nbsp;</i></b></td>
+<td><center><b>598</b></center></td>
+<td><center><b>454</b>&nbsp;<i>(-24%)</i></center></td></tr>
+</tbody></table></center><p>
+
+</p><center><table border="1" cellpadding="2">
+<tbody><tr><td colspan="4">&nbsp;int <b>pfs_get_direntries</b>([in] int handle, [in,out] *pos, [in] int count,<br>
+[out] int data_size, [out, size_is data_size] int **data)&nbsp;</td></tr>
+<tr><td>&nbsp;</td><td><center><i>IPC (kernel)</i></center></td>
+<td><center><i>Flick stub</i></center></td>
+<td><center><i>IDL4 stub</i></center></td></tr>
+<tr><td>&nbsp;client » server</td>
+<td><center><i>157</i></center></td>
+<td><center>145</center></td>
+<td><center>79&nbsp;<i>(-46%)</i></center></td></tr>
+<tr><td>&nbsp;client « server</td>
+<td><center><i>248</i></center></td>
+<td><center>140</center></td>
+<td><center>42&nbsp;<i>(-70%)</i></center></td></tr>
+<tr><td>&nbsp;total</td>
+<td><center><i>405</i></center></td>
+<td><center>285</center></td>
+<td><center>121&nbsp;<i>(-58%)</i></center></td></tr>
+<tr><td colspan="2"><b><i>&nbsp;eff. comm. instructions, IPCs+stubs&nbsp;</i></b></td>
+<td><center><b>690</b></center></td>
+<td><center><b>526</b>&nbsp;<i>(-24%)</i></center></td></tr>
+</tbody></table>
+<a name="table4"></a><b>Table 4.</b> <i>Instructions executed for Flick and IDL4
+stubs (client+server). The IPC column shows the
+instructions executed by the microkernel per IPC
+(this depends on message type and size). The <b>effective
+communication instructions</b> are the sum
+of the required IPC (kernel) instructions plus the
+(user) instructions of the stubs.</i></center><p>
+
+Flick stubs take almost as many instructions as the
+microkernel needs for the IPC system call (including
+the message copy). Current IDL4 stubs use only half
+as many instructions.</p><p>
+
+</p><h3>6 Portability Versus Specialization</h3>
+
+The IDL4 experiment gave us some evidence that specialization
+in stub-code generation pays and is perhaps
+even necessary for industrial acceptance of component-based
+system construction. However, the obvious questions
+are (1) how portable can an optimizing IDL code
+generator be made, and (2) what efforts are required to
+port a specific code generator to a different compiler or
+machine architecture?<p>
+
+Currently, the IDL4 code generation is specialized for
+the <i>gcc</i> compiler and x86 processors. From our current
+experience, we can give some raw estimates about the
+costs to adapt IDL4 to other architectures:</p><p></p><dl>
+<dt><b>New register link conditions:</b>
+</dt><dd>Low adaptation costs, comparable to those that are required 
+to modify the C bindings for all 7 microkernel system calls.
+</dd><dt><b>Different Processor:</b>
+</dt><dd>Low adaptation costs as long as the stack layout is similar. 
+Basically, the stub templates used by the IDL4 code generator 
+have to be translated into the new machine/assembler language.
+</dd><dt><b>Different stack layout</b>
+</dt><dd>Depending on how different the stack layout is, adaptation 
+costs might be lower or higher. Different orderings or distances on the
+stack are easy; a runtime model without a stack
+might require designing a new data model for
+cross-address space parameter transfer.
+</dd><dt><b>Different C compiler</b>
+</dt><dd>Easy if the C compiler offers <i>inline asm</i> procedures 
+exactly like gcc. Medium-high costs if the compiler offers basically 
+the same features but uses different syntax. Impossible or ineffective
+if the compiler offers no such features.
+</dd></dl>
+
+The last point is probably the most critical one. Optimization
+is hard or even impossible if the C compiler
+does not offer access to its code generation process.
+However, this seems to be an inherent problem of separating
+the IDL and the programming language. In all
+other cases, the adaptation costs are similar if not lower
+than porting a normal compiler.
+
+<h3>7 Conclusions</h3>
+
+IDL4 shows that efficient stub code can be generated
+with reasonable effort. With the availability of fast IPC,
+the gains achievable through optimized stub code are becoming
+relevant for component-based systems. Multiserver
+operating systems can probably not be built efficiently
+without such optimized stubs.<p>
+We have shown that significant performance improvements
+are possible. Nevertheless, it is still open,
+how far the current IDL4-generated stubs are from the
+optimum.</p><p>
+The optimized stub-code generation requires specialization
+of the IDL compiler&#8217;s code generator in two dimensions,
+firstly, toward the target programming language
+and compiler, secondly, toward the target machine.
+In this area, two questions are still open: (1) How
+specialized (with respect to acceptable efficiency) must
+an optimizing IDL compiler be? (2) Can we find a small
+set of templates and/or methods that permit easy and
+low-cost specialization of an optimizing IDL compiler
+for most existing programming-language compilers and
+hardware architectures?</p><p>
+An obvious next step therefore is to determine
+whether and how the current results can be generalized.
+An ideal solution would permit extension of the portable
+Flick compiler with the presented code-generation techniques.
+
+</p><h3>References</h3>
+
+<table border="0">
+<tbody><tr><td valign="top"><a name="cite1"></a>[1]</td><td><i>The IOZone filesystem benchmark</i>, April 2000. 
+Available from <a href="http://www.iozone.org/">http://www.iozone.org/</a>.</td></tr>
+<tr><td valign="top"><a name="cite2"></a>[2]</td><td>J. Bruno, J. Brustoloni, E. Gabber, A. Silberschatz, and C. Small.
+Pebble: A component-based operating system for embedded ap-plications.
+<i>Proc. USENIX Workshop on Embedded Systems</i>, pages 55-65, 1999.</td></tr>
+<tr><td valign="top"><a name="cite3"></a>[3]</td><td>G. Eddon and H. Eddon. <i>Inside Distributed COM</i>. Microsoft
+Press, 1998.</td></tr>
+<tr><td valign="top"><a name="cite4"></a>[4]</td><td>Eric Eide, Kevin Frei, Bryan Ford, Jay Lepreau, and Gary Lindstorm.
+Flick: A flexible, optimizing idl compiler. <i>Proceedings of
+the ACM SIGPLAN &#8217;97 Conference on Programming Language
+Design and Implementation (PLDI)</i>, pages 44-56, June 1997.</td></tr>
+<tr><td valign="top"><a name="cite5"></a>[5]</td><td>Alain Gefflaut, Trent Jaeger, Yoonho Park, Jochen Liedtke, Kevin
+Elphinstone, Volkmar Uhlig, Jonathon E. Tidswell, Luke Deller,
+and Lars Reuther. The SawMill multi-server approach. In
+<i>9th ACM SIGOPS European Workshop</i>, Koldingfjord, Denmark,
+September 2000.</td></tr>
+<tr><td valign="top"><a name="cite6"></a>[6]</td><td>H. Härtig, M. Hohmuth, J. Liedtke, S. Schönberg, and J. Wolter.
+The performance of µ-kernel-based systems. In <i>16th ACM Symposium
+on Operating System Principles (SOSP)</i>, pages 66-77, St. Malo, oct 1997.</td></tr>
+<tr><td valign="top"><a name="cite7"></a>[7]</td><td>The Object Management Group (OMG). <i>The Complete CORBAServices
+Book</i>. <a href="http://www.omg.org/library/csindx.html">http://www.omg.org/library/csindx.html</a>.</td></tr>
+</tbody></table>
+
+
+<!-- END OF PAGE CONTENTS -->
+</td></tr>
+</tbody></table>
+<hr>
+<table align="left" border="0" cellpadding="0" cellspacing="0" width="100%">
+<tbody><tr><td valign="top" width="40%">
+<address>
+<font size="2">This paper was originally published by the USENIX Association in the
+Proceedings of the First WIESS Workshop,  
+October 22, 2000, San Diego, California, USA
+</font><br>
+<!-- EDIT THE DATE AND YOUR LOGIN NAME BELOW -->
+<font size="2">Last changed:  23 Jan. 2002 ml</font><br>
+</address>
+</td><td align="right" valign="top" width="60%">
+
+<!-- Upwards Navigation Table -->
+<table border="0" cellpadding="0" cellspacing="0">
+<tbody><tr><td>
+<a href="http://www.usenix.org/events/wiess2000/technical.html"><font size="1">Technical Program</font></a><br>
+</td></tr>
+<tr><td>
+<a href="http://www.usenix.org/events/wiess2000/index.html"><font size="1">Conference Index Home</font></a><br>
+</td></tr>
+<tr><td>
+<a href="http://www.usenix.org/index.html"><font size="1">USENIX home</font></a><br>
+</td></tr></tbody></table>
+<!-- End of Upwards Navigation Table -->
+
+</td></tr></tbody></table>
+
+
+</body></html>

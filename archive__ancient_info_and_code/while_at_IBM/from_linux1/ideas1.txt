@@ -1,0 +1,41 @@
+PROCESS SUBCONTEXTS IN LINUX
+
+11 Jul 2003 - Russ Lewis
+
+Each subcontext in the operating system has its own vma list, which documents the virtual memory ranges which this subcontext owns.  Thus, in subcontexts, the mm_struct now models not a complete context, but a subcontext.
+
+There are two key motivations why subcontexts are used.  First, they are used when you want a certain range of memory to be included into multiple processes.  Second, they are used when you want to protect one portion of the process from another portion.
+
+Most commonly, a subcontext is used for both functions, like when an operating system service is implemented in a subcontext.  This subcontext is included into many different processes, and it is protected from each of them.
+
+When a subcontext includes another, the inclusion is managed by permission masks.  That is, a subcontext cannot necessarily have full access to all of the pages that it has included.  The include permissions are AND-ed with the page permissions of each vma_area to determine the effective permissions.  So if Subcontext A includes Subcontext B with read-only permissions, then Subcontext A can read any readable pages in Subcontext B but can never write to Subcontext B.
+
+Permissions are not necessarily symmetrical.  For example, Subcontext A may include Subcontext B with read-only permissions, but it gives Subcontext B read-write permissions to itself.  That is, code in Subcontext A will only be able to read (never modify) data in Subcontext B.  However, if Subcontext A calls into Subcontext B, then Subcontext B will have full access to Subcontext A's pages.  REMEMBER: Permissions are always AND-ed with the basic permissions of a page.  So, in the example above, Subcontext B CANNOT write to pages in A that are read-only; it only can write to those pages in A which are writable.
+
+The fact that a subcontext may be included into many processes, plus the fact that inclusion permissions may not be symmetrical, makes things rather difficult.  The OS must be able to build two tables for a process:
+
+Page Table (prior art).  No changes here except that we add a "subcontext" field in the hardware implementations of subcontexts.  In a fully-software implementation (i.e. the hardware doesn't undersand subcontexts yet), the page tables in memory are the same as in prior art but the page fault handler changes noticably.
+
+Subcontext Table (new).  The OS must be able to figure out what permissions each subcontext has to access the various other subcontexts.  Note that this table is process-specific, but that a lot of the data in it is common from process to process.  Thus, it may be possible, in some circumstances, to just flush certain elements of the table when swapping from one process to another.
+
+
+
+
+
+Subcontext inclusion is inherited.  That is, if Subcontext A includes Subcontext B, and Subcontext B includes Subcontext C, then Subcontext A includes Subcontext C by inheritance.  However, protection must be accounted for 
+
+
+
+
+
+The fact that a subcontext may be included into many different processes makes our job more complex.  The reason is that you have a shared mm_struct (used in many processes), as well as some shared state (such as which subcontexts this subcontext inherits), but you also have some non-shared state (such as 
+
+
+
+Although it is possible for a subcontext to only be included into one process, or to have a subcontext that is not (yet) included into any process, the point why subcontexts exist is so that they can be included into multiple processes.
+
+
+
+Each process has a "root subcontext."  This subcontext contains the program code and the program data.  The subcontext can access other subcontexts in two ways:
+1) Entry Points.  These are places where you can call out of the current subcontext into another.
+2) Inclusion/Inheritance.  These are subcontexts that you can access directly.

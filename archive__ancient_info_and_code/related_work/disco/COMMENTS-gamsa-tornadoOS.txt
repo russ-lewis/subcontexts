@@ -1,0 +1,20 @@
+Tornado attempts to allow for very high performance on large multiprocessors
+(including NUMA) by avoiding all sharing except for read/read sharing.  Their
+theory is that high-concurrency data structures don't mean much if you have a
+lot of cache bouncing and false sharing between data strutures.
+
+They accomplish this by declaring an object-oriented design where you have
+object references which logically refer to an entire object but which
+effectively refer to processor-local "representatives," which are subobjects
+which cache data specific to the processor.  They communicate with each other
+to keep their data consistent, but attempt to split their work as much as
+possible.
+
+KEY FEATURE
+The key feature, as it relates to subcons, is that they have the same virtual
+address refer to different physical addresses based on which processor is doing
+the reference.  That is, they have per-processor page tables.  Thus, you can
+refer to a generic object reference using an address which is global (that is,
+shared amongst the processors), but you access a local object (the
+representative which is specific to that processor).
+

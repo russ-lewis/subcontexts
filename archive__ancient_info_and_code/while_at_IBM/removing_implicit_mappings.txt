@@ -1,0 +1,8 @@
+Implicit mappings make my head hurt.  They seem to be the best way to optimize searches for transient mappings, and I think I came up with a good way of doing their bookkeeping, but now I have to come up with some way of handling the locks.
+
+You're not supposed to be able to remove a mapping without holding an exclusive lock on the subcontext; which gets it; yet this means that if you are going to remove a certain mapping, then you must get an exclusive lock on all subcons which have a mapping *to* that subcon, since you might discover that they have an implicit mapping which is based on the mapping you're removing.
+
+Since we don't have that sort of backwards search capability, this means that you would really have to get an exclusive lock on *all* subcons before starting your work.  Or else, come up with something else.
+
+
+

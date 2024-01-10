@@ -1,0 +1,54 @@
+First of all, Opal's Related Work section (Section 7) contains lots of
+interesting comments about related work.
+
+OPAL
+
+Opal is a single-address-space system, designed for 64-bit machines.  The
+memory is divided into a set of segments (which I believe are variable size).
+The code executes in one of a plurality of "protection domains;" each
+protection domain can have different access to the various segments.  In this
+way, Opal has a lot of similarities to the subcontexts "mapping" facility.
+However, since there is no particular connection between protection domains and
+segments, they don't really have any concept of transitive mappings.
+
+Code is protected from accessing other protection domains, but can call into
+them using "portals," which are their equivalent of subcontext entry points.
+Their difference is that anybody can call any portal, given that they have the
+portalID (which includes a random number to obfuscate it).  Calling from one
+domain into another (using a portal) causes the thread to take up the
+protection domain that it calls into.
+
+Opal based all of its protections of capabilities.  While these capabilities
+include random numbers to obfuscate them, it is possible for a program to forge
+a capability and then use it to gain access to critical resources.  Moreover,
+if the malicious program is accidentally given read access to critical
+segments, then it can read the capability values directly and then gain access
+to any of the segments named thereby.
+
+
+
+Beyond security, the key problem of Opal is the single-address-space.  They
+acknowledge that this prevents a Unix-style fork ("while a Unix implementation
+can coexist [on Mach] with Opal...Unix could not be built above a native Opal
+kernel").  This is a startlingly frank admission!
+
+IMHO, the ability to support legacy applications (and those applications that
+want to use fork()) is a major advantage that Subcontexts has over Opal.
+Subcontexts supports a hybrid address space architecture, where a portion of
+the space is globally-shared and a portion is not.  (This is a more general
+implementation than that used by the Hemlock operating system, which Opal
+describes in section 7.6.)  Thus, subcontexts supports private address spaces
+for the applications that want to use them, and global spaces for the
+applications that need that.
+
+
+
+Finally, they a mistake by assuming, in an single-address-space operating
+system, that identical pages would not be mapped to virtual addresses.  For
+instance, they assume that shared libraries will be mapped once to a single
+global address, and used from there by all of the components which needs them.
+However, this introduces lots of unnecessary complexities, since the same code
+will need to access with multiple sets of data.  (They solved this by having a
+'base register' to access this data.  It's not clear to me that this base
+register could not be forged or corrupted by malicious or buggy code.)
+

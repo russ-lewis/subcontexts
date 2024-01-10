@@ -1,0 +1,12 @@
+UML may be very close prior art to subcons, in that you have the kernel and the
+application residing in the same address space.  However, there are a few
+differences:
+
+* While UML uses mprotect() to prevent access to kernel memory (and intercepts
+  system calls with strace() to prevent the user from un-protecting it), in
+  subcontexts this is handled automatically by the "real" kernel.
+* Subcontexts allows contruction of arbitrary maps, not just a kernel/user
+  interface.
+* Subcontexts allows for implementation of discontiguous areas.
+* Subcontexts allows for direct function calls from one area to another.
+

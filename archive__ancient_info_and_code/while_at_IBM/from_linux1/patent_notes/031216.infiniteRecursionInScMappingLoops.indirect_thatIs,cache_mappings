@@ -1,0 +1,34 @@
+PROBLEM:
+
+If we are going to recurse into the subcontext mapping tree, we have the
+potential for infinite recursion.  We need a way to prevent that.
+
+DETAILS:
+
+
+
+THINGS I TRIED:
+
+foo
+
+details............
+
+bar
+
+details............
+
+SOLUTION:
+
+When searching a given subcontext for a mapping to another subcontext, first
+populate the indirect_mapping list.  Don't recurse; instead, iterate on the
+list until you can find no new mappings.
+
+Then, simply do a linear search on the list to find out if this sc has enough
+permissions to access the other sc.
+
+Soon, we'll have to cache the indirect_mapping list in the subcontext and
+provide some mechanism for showing when this list is out of date.  For the
+first version, however, don't store this; just regenerate it each time you
+use it (while holding a read lock on the mmap_sem of each subcontext you
+encounter).
+

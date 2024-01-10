@@ -1,0 +1,5 @@
+I am starting to realize that the sharing of services across multiple address
+spaces is a key difference between subcons and anything else I have seen.  It's
+very novel to think of synchronized shared memory range which can be mapped
+into multiple address spaces and retain protection in each of them.
+

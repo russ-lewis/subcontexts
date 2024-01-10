@@ -1,0 +1,6 @@
+Ufo uses a technique that sounds similar to UML (an external thread intercepts
+system calls) to provide userland extension of OS functionality.
+
+This is different than subcontexts because the userland system code is external
+to the process affected.
+

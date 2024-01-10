@@ -1,0 +1,4 @@
+Idea: you can have a general-purpose service subcontext loader, which allows you to load an (unlinked) .o file; the load process attempts to resolve symbols through exported symbols from other subcontexts, and this subcontext exports some of its own.
+
+Not all symbols might be resolved by service subcontexts in memory; you can't map this subcontext into a process where not all of the required input symbols are not satisfied.  But if that is true, then how do you bootstrap the connection?  And what if there are no processes out there that have the symbols yet?
+

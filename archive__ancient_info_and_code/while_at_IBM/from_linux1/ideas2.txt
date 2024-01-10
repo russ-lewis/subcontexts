@@ -1,0 +1,186 @@
+STRUCTURE LAYOUT
+
+We want to keep the general mm_struct management the same as in the current
+kernel, except that we want to break find_vma_* functions.  So what we'll do
+is the following:
+
+mm_struct - describes a process context.  Multiple threads can map it; the
+count of active mappings is listed in the mm_count field.  The vma_list is
+deleted from the structure.  To replace it, we get a pointer to an sc_struct,
+which is the root subcontext of the context.  NOTE: we don't need a list of
+sc_struct's, since all accessible entry points and subcontexts for that
+context are listed as a tree rooted on the root subcontext.
+
+sc_struct - describes a subcontext.  Contains a sc_count field, which is
+incremented for every mapping or entry point into this subcontext.  The
+subcontext should be cleaned up as soon as sc_count == 0.  Globally mapped
+subcontexts include one tick in sc_count for each global mapping, one for each
+global entry point, in addition to the ticks that they get for any explicitly
+defined mappings or entry points.  Fortunately, this functionality does not
+require a lot of special code to implement.  The os will include one special
+subcontext, known as the "global subcontext," which is automatically and
+permanently mapped into every other subcontext (with rwx permissions).  Thus,
+when a subcontext wants to give every other subcontext a mapping or entry
+point, it calls the following routines:
+	sc_map_sc(<mapped_sc_id>, SC_ALL_SUBCONTEXTS, <permissions>);
+	sc_define_entry_point(&addr, SC_ALL_SUBCONTEXTS);
+sc_struct includes field(s) that allow the OS to know whether the subcontext
+is process specific (SC_OVERLAPPED) or a shared service (SC_NONOVERLAPPED).
+Not all service subcontexts will have global mappings or entry points, but
+most will.  Those that do not will automatically be GC'd when the process
+terminates, unless the process has mapped them into some other subcontext
+beforehand.
+
+NOTE: To simplify the GC code, the global subcontext is given an sc_count of 1
+at system initialization (so that it will never be GC'd).
+
+NOTE: The root subcontext of an mm_struct is initialized with a sc_count of 1
+so that it cannot be GC'd while threads still map it.  When the mm_struct is
+being cleaned up (i.e. the last thread has exited), then the sc_count is
+decremented.  Typically, this would automatically cause the sc to be GC'd;
+this causes a chain GC of any other subcontexts, mappings, and entry points
+that it had at the time.  NOTE: I do not know at this time whether or not it
+is possible that, in some circumstances, the root subcontext might outlive the
+mm_struct.
+
+TODO: How to GC circular mappings?
+
+vma_struct - unchanged (unless it has a pointer to mm_struct; this changes to
+a pointer to the sc_struct).  Describes a virtual memory area.  The only
+difference here is that the vma describes a virtual memory area which is part
+of a subcontext (sc_struct) not part of a full context (mm_struct).
+
+sc_overlap_space - Lists what regions of memory are currently allocated for
+SC_OVERLAPPED and SC_NONOVERLAPPED regions.  The idea here is twofold.  First,
+we must guarantee that virtual addresses assigned to an SC_NONOVERLAPPED
+subcontext are never reused for any other subcontext (unless the subcontext
+unmaps them, of course).  This structure tells us which addresses are
+currently being used by which types of subcontexts so that we can find
+appropriate addresses for mmap().  Second, we want to use as little virtual
+memory space as possible, so that we keep open large holes for future mmap()s.
+So, this structure is used during mmap()s into SC_OVERLAPPED subcontexts; the
+kernel will prefer using virtual addresses which overlap virtual addresses
+already being used by other overlapped subcontexts.  This makes it more likely
+that there will be virtual address regions which are totally unused, making
+them available for use by SC_NONOVERLAPPED subcontexts.
+
+NEW GLOBAL VARIABLES
+
+sc_global_subcontext - The subcontext into which you add mappings & entry
+points if you want every other subcontext to have access to your subcontext.
+When the kernel is searching for maps to subcontext misses or for entry points,
+this is one of the places that it will search.
+
+sc_overlap_space - This is the head of a linked list of structures which
+describe the currently used regions of virtual address space.  Each entry in
+the list contains a flag to indicate whether it is SC_OVERLAPPED or
+SC_NONOVERLAPPED, range information, and a use count.  The use count is the
+number of vma's which use this range.
+
+REVERSE MAPPINGS?
+
+There is a difficult problem: what happens when a shared subcontext (one that
+is, or might be, mapped into several processes) has a mapping or an entry
+point into a process-specific subcontext?  That is, what happens when an
+SC_NONOVERLAPPED subcontext maps an SC_OVERLAPPED subcontext?
+
+The problem that arises is, what happens when the SC_NONOVERLAPPED subcontext
+tries to use the mapping?  The OS must be able to deduce, from the virtual
+address being accessed, what other subcontext is being accessed and whether
+the access is valid.  The problem, of course, is that the SC_OVERLAPPED
+subcontext might conceivably be part of any process in the box.  The virtual
+address might be a valid virtual address in many processes; in fact, there
+might be many different SC_OVERLAPPED mappings which all overlap at the
+virtual address in question!
+
+So, how does the OS determine which of these mappings apply and which do not?
+
+Even more tricky is this question: when the process dies, how do we GC all of
+the subcontext mappings which expire?
+
+I have been thinking for a while (though now I'm doubting it) that the best
+way to do this would be to have reverse mappings.  These are just like normal
+mappings (from the perspective of the user); however, when the OS detects that
+an SC_NONOVERLAPPED subcontext is being given access into an SC_OVERLAPPED
+subcontext, this mapping is NOT recorded in the linked list in the
+SC_NONOVERLAPPED subcontext; it is recorded in a "reverse mapping list" in the
+SC_OVERLAPPED subcontext.  The primary advantage here is that when the
+SC_OVERLAPPED subcontext is GC'd (probably because the process has died), then
+the reverse mappings are all undone automatically.  At first blush, it also
+seems like it is easy to search for matches when page faults occur, but this
+is not necessarily the case.
+
+My thought had been to put in code such that, when an SC_NONOVERLAPPED
+subcontext has a page fault, it would first search the direct mapping list of
+that subcontext for matching maps.  If that failed, it would then go to the
+root subcontext of the current process (current->mm->root_sc) and search that
+for reverse mappings.  However, this becomes more difficult if the process
+context includes multiple SC_OVERLAPPED subcontexts.  In this case, we would
+have to somehow find all of the SC_OVERLAPPED subcontexts, check their mapping
+trees, and then look in each for reverse mappings.  Or, worse, perhaps you
+would have to do so iteratively, looking for reverse mappings which are
+direct-mapped which are reverse mapped...  Perhaps this problem can be solved
+by a simple algorithm, but if so I haven't found it yet.
+
+My current solution, which I think is better, is to have direct mappings
+listed in the SC_NONOVERLAPPED subcontext; the SC_OVERLAPPED subcontext then
+contains a list of pointers to these mappings.  This arrangement has the best
+of both reverse mappings and direct mappings.  First, we have a linked list in
+the SC_OVERLAPPED subcontext to all of the mappings, so that they can all be
+removed when the subcontext is GC'd.  Second, all of the mappings are directly
+listed in the appropriate subcontext.
+
+Of course, this means that it is not sufficient to just search the mapping
+list for matching addresses.  Each list of mappings may be a mix of
+SC_NONOVERLAPPED subcontexts and SC_OVERLAPPED subcontexts from any number of
+different process contexts.  In each one, the search algorithm must determine
+whether the mapping is appropriate to the current process context.  To do so,
+we need only to have an "mm" field in each subcontext which points to the root
+subcontext of that process context.  (This field should be NULL in
+SC_NONOVERLAPPED subcontexts.)  So the search algorithm would test the
+following:
+	if((mapping->sc->mm == NULL) ||
+	   (mapping->sc->mm == current->mm))
+	{
+		// search this mapping for the match we need
+	}
+	else
+	{
+		// this mapping is for another process, skip it!
+	}
+
+I don't really like this setup, but it's the best I've found so far. :(
+
+SHARED MMAP'D FILES
+
+Services (running in SC_NONOVERLAPPED subcontexts) will have access to all of
+the advantages of user mode, including dynamically linked libraries (glibc,
+pthreads, etc.)  That means that each service subcontext may map many
+different library files.
+
+In current Linux, it's ok for processes to mmap many different library files
+because the processes use overlapping virtual address spaces.  The kernel can
+assign virtual addresses to these mappings more or less at random, because
+this only clutters up the virtual address space of that one process.  However,
+in an SC_NONOVERLAPPED subcontext this is not a good idea because each page
+of addresses allocated for this subcontext becomes one that cannot be used for
+any other subcontext.  Thus, it is desirable that we somehow share the virtual
+memory for various maps.  That is, when two subcontexts both map the same
+region of the same file (with the same PROT_* permissions), then they should
+get the same address.  To do this, we will probably need to add a new type,
+SC_SHAREDFILE, to the sc_overlap list; SC_SHAREDFILE entries in the list will
+include the file (inode/devid) that is being mapped, the range in the file
+that is mapped, the permissions, and the virtual address being used.  Like
+other entries in the sc_overlap list, they will also include a use count.
+When a subcontext tries to mmap a given file with MAP_SHARED, the kernel will
+search the sc_overlap list for a matching previous map and reuse the virtual
+address if possible.  If it cannot find such a map, it will add a new entry in
+the sc_overlap list.
+
+NOTE: It is possible (though rare) that the first subcontext to mmap a file
+will mmap a subset of the file, and then later subcontexts will try to map the
+same range plus some.  In some cases it may be possible to extend the virtual
+address range into unused areas to create a single, contiguous mapping; in
+others, it may be necessary to allocate a 2nd range in the sc_overlap list for
+this new, larger mapping.  This is undesirable but, I think, unavoidable.
+
