@@ -28,36 +28,36 @@ typedef struct MapEntry
 /**
  * The collection of maps in the /proc/[pid]/maps file.
  */
-typedef struct MemMap
+typedef struct Map
 {
     MapEntry *first;
     size_t size;
-} MemMap;
+} Map;
 
 /**
  * Parses a maps file.
  */
-MemMap *MemMap_parse(const int);
+Map *Map_parse(const int);
 
 /**
  * Gets the diff between two maps.
  */
-MemMap *MemMap_diff(const MemMap *, const MemMap *);
+Map *Map_diff(const Map *, const Map *);
 
 /**
  * Prints a map.
  */
-void MemMap_print(const MemMap *);
+void Map_print(const Map *);
 
 /**
  * Creates the memory for a new map on the heap.
  */
-MemMap *MemMap_new();
+Map *Map_new();
 
 /**
  * Frees the memory for a map struct.
  */
-void MemMap_free(MemMap *);
+void Map_free(Map *);
 
 /**
  * Parses a map entry from a line in the maps file.

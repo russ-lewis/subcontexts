@@ -2,9 +2,9 @@
 #include <malloc.h>
 #include <stdlib.h>
 
-#include "memmap.h"
+#include "map.h"
 
-MemMap *MemMap_parse(const int pid)
+Map *Map_parse(const int pid)
 {
     char *path;
     if (pid == -1)
@@ -25,7 +25,7 @@ MemMap *MemMap_parse(const int pid)
         return NULL;
     }
     
-    MemMap *maps = MemMap_new();
+    Map *maps = Map_new();
     MapEntry *curr = NULL;
     char line[256];
     while (fgets(line, sizeof(line), mapsfile) != NULL)
@@ -49,9 +49,9 @@ MemMap *MemMap_parse(const int pid)
     return maps;
 }
 
-MemMap *MemMap_diff(const MemMap *before, const MemMap *after)
+Map *Map_diff(const Map *before, const Map *after)
 {
-    MemMap *diff = MemMap_new();
+    Map *diff = Map_new();
     MapEntry *diff_curr;
     for (MapEntry *acurr = after->first; acurr != NULL; acurr = acurr->next)
     {
@@ -84,7 +84,7 @@ MemMap *MemMap_diff(const MemMap *before, const MemMap *after)
     return diff;
 }
 
-void MemMap_print(const MemMap *self)
+void Map_print(const Map *self)
 {
     MapEntry *curr = self->first;
     if (curr == NULL)
@@ -101,12 +101,12 @@ void MemMap_print(const MemMap *self)
     } 
 }
 
-MemMap *MemMap_new()
+Map *Map_new()
 {
-    return calloc(sizeof(MemMap), 1);
+    return calloc(sizeof(Map), 1);
 }
 
-void MemMap_free(MemMap *self)
+void Map_free(Map *self)
 {
     MapEntry *curr = self->first;
     while (curr != NULL)
