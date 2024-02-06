@@ -33,7 +33,7 @@ Map *Map_parse(const int pid)
         MapEntry *entry = MapEntry_parse(line); 
         if (curr == NULL)
         {
-            maps->first = entry;
+            maps->head = entry;
             curr = entry;
         }
         else
@@ -53,10 +53,10 @@ Map *Map_diff(const Map *before, const Map *after)
 {
     Map *diff = Map_new();
     MapEntry *diff_curr;
-    for (MapEntry *acurr = after->first; acurr != NULL; acurr = acurr->next)
+    for (MapEntry *acurr = after->head; acurr != NULL; acurr = acurr->next)
     {
         char in_both = 0;
-        for (MapEntry *bcurr = before->first; bcurr != NULL; bcurr = bcurr->next)
+        for (MapEntry *bcurr = before->head; bcurr != NULL; bcurr = bcurr->next)
         {
             if (MapEntry_equal(bcurr, acurr))
             {
@@ -68,9 +68,9 @@ Map *Map_diff(const Map *before, const Map *after)
         if (!in_both)
         {
             MapEntry *entry = MapEntry_copy(acurr);
-            if (diff->first == NULL)
+            if (diff->head == NULL)
             {
-                diff->first = entry;
+                diff->head = entry;
                 diff_curr = entry;
             }
             else
@@ -86,7 +86,7 @@ Map *Map_diff(const Map *before, const Map *after)
 
 void Map_print(const Map *self)
 {
-    MapEntry *curr = self->first;
+    MapEntry *curr = self->head;
     if (curr == NULL)
     {
         printf("No maps\n");
@@ -108,7 +108,7 @@ Map *Map_new()
 
 void Map_free(Map *self)
 {
-    MapEntry *curr = self->first;
+    MapEntry *curr = self->head;
     while (curr != NULL)
     {
         MapEntry *next = curr->next;

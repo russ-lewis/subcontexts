@@ -30,7 +30,7 @@ typedef struct MapEntry
  */
 typedef struct Map
 {
-    MapEntry *first;
+    MapEntry *head;
     size_t size;
 } Map;
 
