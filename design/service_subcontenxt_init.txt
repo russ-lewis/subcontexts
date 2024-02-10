@@ -37,3 +37,12 @@ TODO: would we have to worry about any process-related resources, like open
       files?  Maybe we should just forbid any use of such things in a
       service subcontext.
 
+
+
+Alexander, 04 Feb:
+
+For the TODO above, another thing we could do is intercept the open std library 
+call in the subcontext and have it request the host process to open the file on
+its behalf. We can do similar things for other process resources.
+
+

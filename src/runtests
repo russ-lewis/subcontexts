@@ -1,0 +1,39 @@
+#!/bin/python3
+
+import subprocess as sp
+import os
+import sys
+
+if len(sys.argv) > 1:
+    raw = sys.argv[1] == "raw"
+else:
+    raw = False
+
+sp.run(["make", "tests"], stdout=sp.DEVNULL)
+tests = [test for test in os.listdir("tests") if test.startswith("test")]
+for test in tests:
+    print(f"----- {test} -----")
+    tdir = f"tests/{test}"
+    assert os.path.exists(f"{tdir}/{test}"), f"{tdir}/{test} does not exist"
+    assert os.path.exists(f"{tdir}/{test}.out"), f"{tdir}/{test}.out does not exist"
+    
+    with open(f"{tdir}/{test}.out", "r") as file:
+        expected = file.read()
+    actual = sp.check_output([f"./{test}"], cwd=tdir).decode()
+    
+    if expected == actual:
+        print("Passed!")
+    else:
+        print("Expected")
+        if raw:
+            print(repr(expected))
+        else:
+            print(expected)
+        print()
+        print("Actual:")
+        if raw:
+            print(repr(actual))
+        else:
+            print(actual)
+        print()
+    print("------------------")
