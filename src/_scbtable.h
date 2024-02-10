@@ -1,3 +1,8 @@
+/**
+ * This is a private library to the scon library and should not be included by any user code. 
+ * It manages the subcontext table.
+ */
+
 #ifndef SCB_TABLE_H
 #define SCB_TABLE_H
 

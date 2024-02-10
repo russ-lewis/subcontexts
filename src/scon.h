@@ -1,3 +1,7 @@
+/**
+ * Includes functions to initialize and uses subcontexts.
+ */
+
 #ifndef SCON_H
 #define SCON_H
 
