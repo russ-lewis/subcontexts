@@ -5,10 +5,8 @@
 
 int main()
 {
-    scon_t scon;
-    scon_init(&scon, "test01_scon.so"); 
-    void (*test)() = scon_loadf(&scon, "test");
-    test(); 
-    scon_free(&scon);
+    scon_t scon = scon_create("test01_scon.so"); 
+    scon_callf(scon, "test", NULL);
+    scon_close(scon);
     return 0;
 }

@@ -8,8 +8,8 @@
  */
 typedef struct MapEntry
 {
-    unsigned int start_addr;
-    unsigned int end_addr;
+    void *start_addr;
+    void *end_addr;
 
     char r;
     char w;

@@ -93,8 +93,8 @@ void Map_print(const Map *self)
         return;
     }
 
-    printf("   start       end  rwxp    offset  device        inode  pathname\n");
-    printf("-----------------------------------------------------------------\n");
+    printf("         start             end  rwxp        offset  device        inode  pathname\n");
+    printf("---------------------------------------------------------------------------------\n");
     for (int i = 0; curr != NULL; i++, curr = curr->next)
     {
         MapEntry_print(curr);
@@ -124,7 +124,7 @@ MapEntry *MapEntry_parse(const char *buffer)
     MapEntry *entry = calloc(sizeof(MapEntry), 1);
     char flags[4];
     sscanf(buffer, 
-           "%x-%x %4c %x %x:%x %d %s", 
+           "%p-%p %4c %x %x:%x %d %s", 
            &entry->start_addr, 
            &entry->end_addr, 
            flags, 
@@ -158,7 +158,7 @@ char MapEntry_equal(const MapEntry *a, const MapEntry *b)
 void MapEntry_print(const MapEntry *self)
 { 
     printf(
-        "%8x  %8x  %c%c%c%c  %8x  %4x:%-4x  %8d  %s\n", 
+        "%14p  %14p  %c%c%c%c  %12x  %4x:%-4x  %8d  %s\n", 
         self->start_addr, self->end_addr, 
         self->r ? 'r' : '-', self->w ? 'w' : '-', self->e ? 'x' : '-', self->p ? 'p' : 's',
         self->offset,
@@ -166,5 +166,4 @@ void MapEntry_print(const MapEntry *self)
         self->inode,
         self->pathname);
 }
-
 
